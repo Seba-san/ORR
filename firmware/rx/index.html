@@ -1,0 +1,1300 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>SDR Web DAQ - Captura de Campo</title>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: rgba(30, 41, 59, 0.7);
+            --card-border: rgba(255, 255, 255, 0.08);
+            --accent-primary: #10b981; /* Esmeralda */
+            --accent-primary-hover: #059669;
+            --accent-secondary: #06b6d4; /* Cian */
+            --accent-danger: #ef4444; /* Rosa/Rojo */
+            --accent-danger-hover: #dc2626;
+            --accent-warning: #f59e0b; /* Ámbar */
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --text-dark: #0f172a;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background: radial-gradient(circle at top, #1e293b 0%, var(--bg-color) 100%);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 600px;
+        }
+
+        /* Títulos */
+        .header {
+            text-align: center;
+            margin-bottom: 25px;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            font-weight: 800;
+            background: linear-gradient(135deg, #a7f3d0 0%, #67e8f9 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 6px;
+            letter-spacing: 0.5px;
+        }
+
+        .header p {
+            font-size: 13px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+        }
+
+        /* Tarjeta Principal */
+        .card {
+            background: var(--card-bg);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--card-border);
+            border-radius: 16px;
+            padding: 25px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+            margin-bottom: 20px;
+            transition: transform 0.3s ease;
+        }
+
+        .card:hover {
+            border-color: rgba(255, 255, 255, 0.12);
+        }
+
+        .card h2 {
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            padding-bottom: 10px;
+        }
+
+        /* Datos de Configuración */
+        .meta-info {
+            font-size: 14px;
+            color: var(--text-muted);
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .meta-info b {
+            color: var(--text-main);
+        }
+
+        /* Botones */
+        .btn-group {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        @media (min-width: 480px) {
+            .btn-group {
+                flex-direction: row;
+            }
+        }
+
+        button {
+            width: 100%;
+            padding: 16px 24px;
+            font-size: 16px;
+            font-weight: 700;
+            border-radius: 10px;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s ease-in-out;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        #btnMonitor {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: var(--text-main);
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25);
+            flex: 1;
+        }
+
+        #btnMonitor:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(16, 185, 129, 0.35);
+        }
+
+        #btnMonitor.recording {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.25);
+            animation: pulse-rec 1.5s ease-in-out infinite;
+        }
+
+        @keyframes pulse-rec {
+            0%, 100% { box-shadow: 0 4px 12px rgba(239, 68, 68, 0.25); }
+            50% { box-shadow: 0 4px 20px rgba(239, 68, 68, 0.5); }
+        }
+
+        #btnListen {
+            background: rgba(30, 41, 59, 0.8);
+            color: var(--text-muted);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: none;
+            font-size: 12px;
+            padding: 10px 14px;
+        }
+
+        #btnListen:hover:not(:disabled) {
+            background: rgba(30, 41, 59, 1.0);
+            color: var(--text-main);
+        }
+
+        #btnListen.listening {
+            background: linear-gradient(135deg, var(--accent-secondary) 0%, #0891b2 100%);
+            color: var(--text-main);
+            box-shadow: 0 4px 12px rgba(6, 182, 212, 0.2);
+        }
+
+        @keyframes pulse-number {
+            0% { transform: scale(1.0); }
+            100% { transform: scale(1.05); }
+        }
+
+
+        #btnStop {
+            background: linear-gradient(135deg, var(--accent-danger) 0%, #dc2626 100%);
+            color: var(--text-main);
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2);
+        }
+
+        #btnStop:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(239, 68, 68, 0.3);
+        }
+
+        button:active:not(:disabled) {
+            transform: translateY(0);
+        }
+
+        button:disabled {
+            background: #334155;
+            color: #64748b;
+            box-shadow: none;
+            cursor: not-allowed;
+            opacity: 0.5;
+        }
+
+        /* Estado del Adquisidor */
+        .status-box {
+            background: rgba(15, 23, 42, 0.6);
+            padding: 15px;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            text-align: center;
+            margin-top: 10px;
+        }
+
+        .status-text {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--accent-primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        /* Animación de Grabación */
+        .pulsing-dot {
+            width: 10px;
+            height: 10px;
+            background-color: var(--accent-danger);
+            border-radius: 50%;
+            display: inline-block;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(0.9); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+            70% { transform: scale(1.1); box-shadow: 0 0 0 8px rgba(239, 68, 68, 0); }
+            100% { transform: scale(0.9); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+        }
+
+        /* Telemetría GPS Grid */
+        .gps-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            margin-top: 15px;
+        }
+
+        .gps-item {
+            background: rgba(15, 23, 42, 0.4);
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.03);
+        }
+
+        .gps-label {
+            font-size: 11px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+        }
+
+        .gps-value {
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--text-main);
+            font-family: monospace;
+        }
+
+        .gps-item-full {
+            grid-column: span 2;
+        }
+
+        /* Estado del GPS Badge */
+        .status-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+
+        .status-success {
+            background: rgba(16, 185, 129, 0.15);
+            color: #6ee7b7;
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+
+        .status-warning {
+            background: rgba(245, 158, 11, 0.15);
+            color: #fde68a;
+            border: 1px solid rgba(245, 158, 11, 0.3);
+        }
+
+        .status-error {
+            background: rgba(239, 68, 68, 0.15);
+            color: #fca5a5;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+
+        /* Botón GPS Secundario */
+        .btn-secondary {
+            background: rgba(59, 130, 246, 0.1);
+            color: #93c5fd;
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            padding: 8px 16px;
+            font-size: 12px;
+            border-radius: 6px;
+            margin-top: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-weight: 600;
+            text-align: center;
+        }
+
+        .btn-secondary:hover {
+            background: rgba(59, 130, 246, 0.2);
+            color: #ffffff;
+            border-color: rgba(59, 130, 246, 0.5);
+        }
+
+        /* Tarjeta de Advertencia */
+        .warning-card {
+            background: rgba(245, 158, 11, 0.08);
+            border: 1px solid rgba(245, 158, 11, 0.2);
+            border-radius: 12px;
+            padding: 15px;
+            font-size: 12px;
+            line-height: 1.5;
+            color: #fde68a;
+            margin-top: 10px;
+            display: flex;
+            gap: 10px;
+            align-items: flex-start;
+        }
+
+        .warning-icon {
+            font-size: 16px;
+        }
+
+        /* Bloque de código / URL */
+        code.url-code {
+            background: #0f172a;
+            padding: 4px 8px;
+            border-radius: 4px;
+            color: #67e8f9;
+            word-break: break-all;
+            display: block;
+            margin-top: 5px;
+            margin-bottom: 5px;
+            font-family: monospace;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            font-size: 11px;
+            text-align: left;
+        }
+
+        /* Footer */
+        .footer {
+            text-align: center;
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-top: 10px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    
+    <!-- Encabezado del Instituto -->
+    <div class="header">
+        <p>Universidad Nacional de San Juan</p>
+        <h1>INAUT • Web DAQ AFSK</h1>
+        <p style="font-size: 11px; margin-top: 4px; color: var(--accent-secondary);">Campaña de Campo - JAR 2026</p>
+     <!-- Panel de Grabación ADC -->
+    <div class="card">
+        <h2>📡 Streaming de Audio en Tiempo Real</h2>
+        
+        <div class="meta-info">
+            Frecuencia de Muestreo: <b>19200 Hz</b> | Formato: <b>16-bit PCM Mono</b>
+        </div>
+
+        <div class="btn-group">
+            <button id="btnMonitor">
+                <span>🔴</span> Iniciar Grabación
+            </button>
+            <button id="btnListen">
+                <span>🔇</span> Silenciar
+            </button>
+        </div>
+
+        <!-- Barra de Progreso de Grabación Premium -->
+        <div id="progress-container" style="margin-top: 20px; text-align: left; background: rgba(15, 23, 42, 0.4); padding: 15px; border-radius: 10px; border: 1px solid rgba(255, 255, 255, 0.04); display: none;">
+            <div style="display: flex; justify-content: space-between; font-size: 12px; color: var(--text-muted); margin-bottom: 6px; font-weight: 600;">
+                <span>⏳ Grabación Activa (Celular)</span>
+                <span id="progress-time-text" style="font-family: monospace; color: var(--accent-secondary);">0.0s / Grabación Continua</span>
+            </div>
+            <div style="background: rgba(15, 23, 42, 0.9); height: 12px; border-radius: 6px; border: 1px solid rgba(255, 255, 255, 0.08); overflow: hidden; position: relative;">
+                <div id="progress-bar" style="background: linear-gradient(90deg, var(--accent-secondary) 0%, var(--accent-primary) 100%); width: 0%; height: 100%; transition: width 0.25s linear;"></div>
+            </div>
+            <div id="progress-details" style="display: flex; justify-content: space-between; font-size: 10px; color: var(--text-muted); margin-top: 6px; font-family: monospace;">
+                <span id="progress-samples">Muestras: 0</span>
+                <span id="progress-mem">Segundos totales: 0</span>
+            </div>
+        </div>
+
+
+        <div class="status-box">
+            <div id="status" class="status-text" style="color: var(--text-muted);">
+                Conectando con el receptor de radio...
+            </div>
+        </div>
+
+        <!-- VU METER PREMIUM INTEGRADO EN EL DISPOSITIVO MÓVIL (100% CLIENTE) -->
+        <div id="vu-container" style="margin-top: 20px; text-align: left; background: rgba(15, 23, 42, 0.4); padding: 15px; border-radius: 10px; border: 1px solid rgba(255, 255, 255, 0.04); transition: opacity 0.3s ease;">
+            <div style="display: flex; justify-content: space-between; font-size: 12px; color: var(--text-muted); margin-bottom: 6px; font-weight: 600;">
+                <span id="vu-title">📊 Canal Inactivo (Buscando Señal...)</span>
+                <span id="vu-db-text" style="font-family: monospace; color: var(--accent-secondary);">-60.0 dB</span>
+            </div>
+            
+            <div style="background: rgba(15, 23, 42, 0.9); height: 18px; border-radius: 5px; border: 1px solid rgba(255, 255, 255, 0.08); overflow: hidden; position: relative; display: flex; align-items: center; margin-bottom: 12px;">
+                
+                <!-- Barra del VU de Color Dinámico -->
+                <div id="vu-bar" style="background: linear-gradient(90deg, #10b981 0%, #10b981 65%, #f59e0b 82%, #ef4444 100%); width: 0%; height: 100%; transition: width 0.05s ease-out; box-shadow: none;"></div>
+                
+                <!-- Escala logarítmica de decibeles de fondo de escala (dB FS) -->
+                <div style="position: absolute; width: 100%; height: 100%; display: flex; justify-content: space-between; font-size: 9px; color: rgba(255, 255, 255, 0.45); padding: 2px 6px; box-sizing: border-box; pointer-events: none; font-weight: bold; font-family: monospace; line-height: 14px;">
+                    <span>-60 dB</span>
+                    <span>-40 dB</span>
+                    <span>-20 dB</span>
+                    <span>-10 dB</span>
+                    <span>-3 dB</span>
+                    <span>0 dB</span>
+                </div>
+            </div>
+
+            <!-- (Control de audio manual simplificado: se activa directamente al presionar Escuchar Canal) -->
+        </div>
+
+        <!-- REPRODUCTOR DE AUDIO DE ÚLTIMA GRABACIÓN (POST-CAPTURA) -->
+        <div id="player-container" style="margin-top: 20px; text-align: left; background: rgba(15, 23, 42, 0.4); padding: 15px; border-radius: 10px; border: 1px solid rgba(255, 255, 255, 0.04); display: none; transition: opacity 0.3s ease;">
+            <div style="display: flex; justify-content: space-between; font-size: 12px; color: var(--text-muted); margin-bottom: 8px; font-weight: 600;">
+                <span style="color: var(--accent-secondary);">🎵 Reproductor de la Última Captura</span>
+                <span id="player-filename" style="font-family: monospace; font-size: 11px;">audio.wav</span>
+            </div>
+            <audio id="audio-player" controls style="width: 100%; outline: none;"></audio>
+        </div>
+    </div>
+
+    <!-- Panel de Telemetría GPS -->
+    <div class="card">
+        <h2>🛰️ Telemetría GPS del Celular</h2>
+        
+        <div style="text-align: left; margin-bottom: 5px;">
+            <div id="gps-status" class="status-badge status-warning">
+                🛰️ GPS: Buscando señal...
+            </div>
+        </div>
+
+        <div class="gps-grid">
+            <div class="gps-item">
+                <div class="gps-label">Latitud</div>
+                <div id="gps-lat" class="gps-value">---</div>
+            </div>
+            <div class="gps-item">
+                <div class="gps-label">Longitud</div>
+                <div id="gps-lon" class="gps-value">---</div>
+            </div>
+            <div class="gps-item">
+                <div class="gps-label">Precisión GPS</div>
+                <div id="gps-prec" class="gps-value">---</div>
+            </div>
+            <div class="gps-item">
+                <div class="gps-label">Altitud (HAE)</div>
+                <div id="gps-alt" class="gps-value">---</div>
+            </div>
+            <div class="gps-item gps-item-full">
+                <div class="gps-label">Última Actualización</div>
+                <div id="gps-time" class="gps-value">---</div>
+            </div>
+        </div>
+
+        <!-- Alerta de Bloqueo por Protocolo HTTP Inseguro con Tutorial Integrado -->
+        <div id="gps-security-warning" class="warning-card" style="background: rgba(239, 68, 68, 0.08); border-color: rgba(239, 68, 68, 0.25); color: #fca5a5; margin-top: 15px; display: none; flex-direction: column; gap: 12px; text-align: left; line-height: 1.5;">
+            <div style="display: flex; gap: 10px; align-items: flex-start; width: 100%;">
+                <span class="warning-icon" style="font-size: 20px;">🔒</span>
+                <div>
+                    <b style="color: #ffffff; font-size: 14px;">Bloqueo de Seguridad del Navegador (Protocolo HTTP):</b><br>
+                    Los celulares modernos impiden el uso del GPS en páginas web que no usan HTTPS. Como esta red inalámbrica es local e insegura (<code>http://192.168.4.1</code>), tu navegador bloquea el GPS por defecto.
+                </div>
+            </div>
+
+            <!-- Guía de Configuración Directa -->
+            <div style="background: rgba(15, 23, 42, 0.7); padding: 16px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.06); width: 100%; font-size: 13px; color: var(--text-main);">
+                <h3 style="font-size: 13px; margin-bottom: 10px; color: var(--accent-secondary); font-weight: 700; display: flex; align-items: center; gap: 6px;">
+                    🛠️ Guía de Activación (Chrome en Android) - ¡Solo toma 1 minuto!:
+                </h3>
+                <ol style="margin-left: 18px; display: flex; flex-direction: column; gap: 8px;">
+                    <li>
+                        Abre una nueva pestaña en el navegador de tu celular e ingresa la siguiente dirección técnica:
+                        <code class="url-code">chrome://flags/#unsafely-treat-insecure-origin-as-secure</code>
+                    </li>
+                    <li>
+                        Busca la opción resaltada en la lista llamada:<br>
+                        <b style="color: #ffffff;">"Insecure origins treated as secure"</b>.
+                    </li>
+                    <li>
+                        Cambia su estado en la derecha de "Disabled" a <b style="color: var(--accent-primary);">"Enabled"</b>.
+                    </li>
+                    <li>
+                        En el cuadro de texto vacío que aparece inmediatamente abajo, ingresa exactamente nuestra dirección IP local:
+                        <code class="url-code">http://192.168.4.1</code>
+                    </li>
+                    <li>
+                        Presiona el botón azul grande de la esquina inferior derecha: <b>"Relaunch"</b> (Reiniciar).
+                    </li>
+                    <li>
+                        <b>¡Listo!</b> Regresa a esta pestaña (<code>192.168.4.1</code>). El navegador ahora reconocerá la IP como segura, te solicitará permisos de localización habituales y registrará el GPS a la perfección.
+                    </li>
+                </ol>
+                <div style="margin-top: 10px; font-size: 11px; color: #a7f3d0; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 8px;">
+                    💡 <i>Esta excepción es de única vez para este celular, es completamente segura y NO afecta la protección normal del dispositivo en el resto del internet (solo le otorga confianza a la IP de la Pico).</i>
+                </div>
+            </div>
+        </div>
+
+        <div style="text-align: right; margin-top: 12px;">
+            <button id="btn-gps-retry" class="btn-secondary" style="display: none;">
+                🔄 Solicitar Permiso de GPS
+            </button>
+        </div>
+    </div>
+
+    <!-- Tarjeta de Advertencia de Descarga Múltiple -->
+    <div class="warning-card">
+        <span class="warning-icon">⚠️</span>
+        <div>
+            <b>Nota para el operador:</b> Para cumplir con la captura de campo, el navegador descargará automáticamente <b>dos archivos simultáneamente</b>: el audio <code>.wav</code> y la telemetría <code>.csv</code> con el mismo timestamp. Asegúrate de presionar <b>"Permitir múltiples descargas"</b> si tu celular lo solicita.
+        </div>
+    </div>
+
+    <!-- Footer Institucional -->
+    <div class="footer">
+        Desarrollado para el Proyecto de Intercomunicador SDR de Robótica Agrícola.<br>
+        Instituto de Automática (INAUT) | FI - UNSJ
+    </div>
+</div>
+
+<script>
+    // --- CLASE PARA REPRODUCCIÓN EN TIEMPO REAL CON SQUELCH ---
+    class RealTimePlayer {
+        constructor(sampleRate = 19200) {
+            this.sampleRate = sampleRate;
+            this.audioCtx = null;
+            this.nextStartTime = 0;
+            this.isMuted = true;
+        }
+
+        init() {
+            if (this.audioCtx) return;
+            try {
+                this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                this.nextStartTime = this.audioCtx.currentTime;
+                console.log("[RealTimePlayer] AudioContext inicializado.");
+            } catch (e) {
+                console.error("[RealTimePlayer] Fallo al iniciar AudioContext:", e);
+            }
+        }
+
+        setMuted(muted) {
+            this.isMuted = muted;
+        }
+
+        playPCM(bytes) {
+            if (!bytes || bytes.length < 2) return;
+            try {
+                this.init();
+                if (!this.audioCtx) return;
+                
+                if (this.audioCtx.state === 'suspended') {
+                    this.audioCtx.resume();
+                }
+
+                // Si el reproductor está silenciado, actualizamos el tiempo de inicio y salimos
+                if (this.isMuted) {
+                    this.nextStartTime = Math.max(this.nextStartTime, this.audioCtx.currentTime);
+                    return;
+                }
+
+                const sampleCount = Math.floor(bytes.length / 2);
+                if (sampleCount === 0) return;
+
+                const floatData = new Float32Array(sampleCount);
+                for (let i = 0; i < sampleCount; i++) {
+                    const low = bytes[i * 2];
+                    const high = bytes[i * 2 + 1];
+                    let sample = low | (high << 8);
+                    if (sample & 0x8000) sample -= 0x10000;
+                    floatData[i] = sample / 32768.0;
+                }
+
+                const audioBuf = this.audioCtx.createBuffer(1, sampleCount, this.sampleRate);
+                audioBuf.copyToChannel(floatData, 0);
+
+                const source = this.audioCtx.createBufferSource();
+                source.buffer = audioBuf;
+                source.connect(this.audioCtx.destination);
+
+                const now = this.audioCtx.currentTime;
+                if (this.nextStartTime < now) {
+                    this.nextStartTime = now + 0.25; // Amortiguador de jitter de 250 ms para audio fluido
+                }
+                source.start(this.nextStartTime);
+                this.nextStartTime += audioBuf.duration;
+            } catch (e) {
+                console.warn("[RealTimePlayer] Error al reproducir chunk PCM:", e);
+            }
+        }
+
+        stop() {
+            if (this.audioCtx) {
+                try {
+                    this.audioCtx.close();
+                } catch(e) {}
+                this.audioCtx = null;
+                console.log("[RealTimePlayer] AudioContext cerrado.");
+            }
+        }
+    }
+
+    const realTimePlayer = new RealTimePlayer(19200);
+
+    // Variables para la telemetría GPS
+    let gpsDatos = null;
+    let gpsError = null;
+    let watchId = null;
+
+    // Variables de control del streaming en tiempo real
+    let isRecording = false;
+    let abortController = null;
+    let recordedChunks = [];
+    let accumulatedBytesForVU = new Uint8Array(38400); // 19200 muestras signed 16-bit (1 segundo)
+    let bytesInVU = 0;
+    
+    // Variables de control para el VU Meter
+    let smoothedDb = -60.0;      // Nivel de decibeles inicial (dB FS)
+
+    // Variables de control para el guardado en disco de la grabación útil
+    let isSavingAudio = false;      // Si se están guardando las muestras del stream
+    let totalBytesSaved = 0;        // Cantidad de bytes grabados acumulados
+    
+
+
+
+    // --- FUNCIÓN PARA CREAR CABECERA WAV ESTÁNDAR DE 44 BYTES ---
+    function createWavHeader(dataLength) {
+        const buffer = new ArrayBuffer(44);
+        const view = new DataView(buffer);
+        
+        const writeString = (offset, string) => {
+            for (let i = 0; i < string.length; i++) {
+                view.setUint8(offset + i, string.charCodeAt(i));
+            }
+        };
+        
+        writeString(0, 'RIFF');
+        view.setUint32(4, 36 + dataLength, true); // Tamaño total del archivo - 8 bytes
+        writeString(8, 'WAVE');
+        writeString(12, 'fmt ');
+        view.setUint32(16, 16, true);  // Tamaño del subbloque fmt (16 para PCM)
+        view.setUint16(20, 1, true);   // Formato de audio (1 = PCM lineal sin compresión)
+        view.setUint16(22, 1, true);   // Canales (1 = Mono)
+        view.setUint32(24, 19200, true); // Frecuencia de muestreo (19200 Hz)
+        view.setUint32(28, 19200 * 2, true); // Tasa de bytes (19200 * 2 bytes/muestra)
+        view.setUint16(32, 2, true);   // Block Align (Canales * Bytes por muestra)
+        view.setUint16(34, 16, true);  // Bits por muestra (16 bits)
+        writeString(36, 'data');
+        view.setUint32(40, dataLength, true); // Tamaño de la sección de datos
+        
+        return buffer;
+    }
+
+    // --- MANEJO DEL ESTADO DE LA INTERFAZ GPS ---
+    function actualizarUIGPS() {
+        const elEstado = document.getElementById('gps-status');
+        const elLat = document.getElementById('gps-lat');
+        const elLon = document.getElementById('gps-lon');
+        const elPrec = document.getElementById('gps-prec');
+        const elAlt = document.getElementById('gps-alt');
+        const elTime = document.getElementById('gps-time');
+        const btnReintentar = document.getElementById('btn-gps-retry');
+
+        if (gpsError) {
+            elEstado.className = 'status-badge status-error';
+            if (gpsError.includes("seguridad HTTP") || gpsError.includes("Restricción de seguridad")) {
+                elEstado.innerText = `❌ GPS: Bloqueado por seguridad HTTP`;
+                elLat.innerText = 'Bloqueado por HTTP';
+                elLon.innerText = 'Bloqueado por HTTP';
+            } else {
+                elEstado.innerText = `❌ GPS: ${gpsError}`;
+                elLat.innerText = 'Sin Señal';
+                elLon.innerText = 'Sin Señal';
+            }
+            elPrec.innerText = '---';
+            elAlt.innerText = '---';
+            elTime.innerText = '---';
+            btnReintentar.style.display = 'inline-flex';
+        } else if (gpsDatos) {
+            elEstado.className = 'status-badge status-success';
+            elEstado.innerText = '🛰️ GPS: Señal Activa (Listo)';
+            elLat.innerText = gpsDatos.latitud.toFixed(6) + '°';
+            elLon.innerText = gpsDatos.longitud.toFixed(6) + '°';
+            elPrec.innerText = gpsDatos.precision.toFixed(1) + ' m';
+            elAlt.innerText = gpsDatos.altitud !== null ? gpsDatos.altitud.toFixed(1) + ' m' : 'No disponible';
+            elTime.innerText = gpsDatos.timestampLocal;
+            btnReintentar.style.display = 'none';
+        } else {
+            elEstado.className = 'status-badge status-warning';
+            elEstado.innerText = '🛰️ GPS: Buscando señal...';
+            elLat.innerText = 'Adquiriendo...';
+            elLon.innerText = 'Adquiriendo...';
+            elPrec.innerText = '---';
+            elAlt.innerText = '---';
+            elTime.innerText = '---';
+            btnReintentar.style.display = 'none';
+        }
+    }
+
+    // --- SOLICITAR ACCESO AL GPS Y HACER SEGUIMIENTO ---
+    function iniciarSeguimientoGPS() {
+        const warningBlock = document.getElementById('gps-security-warning');
+
+        // Detección activa del bloqueo de seguridad por HTTPS/HTTP
+        const noSoportadoOSeguridadHTTP = (!navigator.geolocation) || (window.isSecureContext === false && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1');
+
+        if (noSoportadoOSeguridadHTTP) {
+            gpsError = "Restricción de seguridad HTTP del celular";
+            if (warningBlock) {
+                warningBlock.style.display = 'flex';
+            }
+            actualizarUIGPS();
+            return;
+        }
+
+        if (warningBlock) {
+            warningBlock.style.display = 'none';
+        }
+
+        gpsError = null;
+        actualizarUIGPS();
+
+        const opciones = {
+            enableHighAccuracy: true,  // Forzar uso de hardware GPS integrado
+            timeout: 10000,            // Espera máxima de 10s
+            maximumAge: 0              // No usar lecturas guardadas en caché
+        };
+
+        if (watchId !== null) {
+            navigator.geolocation.clearWatch(watchId);
+        }
+
+        watchId = navigator.geolocation.watchPosition(
+            (posicion) => {
+                const ahora = new Date();
+                gpsDatos = {
+                    latitud: posicion.coords.latitude,
+                    longitud: posicion.coords.longitude,
+                    precision: posicion.coords.accuracy,
+                    altitud: posicion.coords.altitude,
+                    velocidad: posicion.coords.speed,
+                    rumbo: posicion.coords.heading,
+                    timestampGPS: new Date(posicion.timestamp).toISOString(),
+                    timestampLocal: ahora.toLocaleTimeString()
+                };
+                gpsError = null;
+                actualizarUIGPS();
+            },
+            (error) => {
+                switch(error.code) {
+                    case error.PERMISSION_DENIED:
+                        gpsError = "Permiso denegado por el usuario";
+                        break;
+                    case error.POSITION_UNAVAILABLE:
+                        gpsError = "Ubicación no disponible (Satélites)";
+                        break;
+                    case error.TIMEOUT:
+                        gpsError = "Tiempo de espera agotado";
+                        break;
+                    default:
+                        gpsError = "Error de GPS de hardware";
+                }
+                gpsDatos = null;
+                actualizarUIGPS();
+            },
+            opciones
+        );
+    }
+
+    // --- SOLICITAR PERMISO EXPLÍCITAMENTE (RETORNA PROMESA) ---
+    function solicitarPermisoGPSPromesa() {
+        return new Promise((resolve, reject) => {
+            const noSoportadoOSeguridadHTTP = (!navigator.geolocation) || (window.isSecureContext === false && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1');
+            
+            if (noSoportadoOSeguridadHTTP) {
+                reject("Bloqueado por protocolo HTTP inseguro");
+                return;
+            }
+            
+            navigator.geolocation.getCurrentPosition(
+                (posicion) => {
+                    const ahora = new Date();
+                    gpsDatos = {
+                        latitud: posicion.coords.latitude,
+                        longitud: posicion.coords.longitude,
+                        precision: posicion.coords.accuracy,
+                        altitud: posicion.coords.altitude,
+                        velocidad: posicion.coords.speed,
+                        rumbo: posicion.coords.heading,
+                        timestampGPS: new Date(posicion.timestamp).toISOString(),
+                        timestampLocal: ahora.toLocaleTimeString()
+                    };
+                    gpsError = null;
+                    actualizarUIGPS();
+                    resolve(gpsDatos);
+                },
+                (error) => {
+                    let msg = "Error";
+                    if (error.code === error.PERMISSION_DENIED) {
+                        msg = "Permiso denegado por el usuario";
+                    } else if (error.code === error.POSITION_UNAVAILABLE) {
+                        msg = "Señal de satélite no disponible";
+                    } else if (error.code === error.TIMEOUT) {
+                        msg = "Tiempo de espera de GPS agotado";
+                    }
+                    gpsError = msg;
+                    actualizarUIGPS();
+                    reject(msg);
+                },
+                { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
+            );
+        });
+    }
+
+    // (Sintetizador de notificaciones sonoras eliminado para simplificación)
+
+
+
+    // --- PROCESAMIENTO DFT PARA EL VU METER (Ratio P_1200 / P_total) ---
+    function actualizarVUMeterCon2400Hz(bytes) {
+        const sampleCount = 19200; // 1 segundo exacto de audio a 19200 Hz
+        let real2400 = 0, imag2400 = 0;
+        let real1200 = 0, imag1200 = 0;
+        let sumSquared = 0;
+        
+        // Frecuencias ortogonales perfectas en la base DFT a Fs = 19200 Hz:
+        // theta_2400 = 2 * Math.PI * (2400 / 19200) = 0.25 * Math.PI
+        // theta_1200 = 2 * Math.PI * (1200 / 19200) = 0.125 * Math.PI
+        const theta2400 = 0.25 * Math.PI;
+        const theta1200 = 0.125 * Math.PI;
+
+        for (let i = 0; i < sampleCount; i++) {
+            const low = bytes[i * 2];
+            const high = bytes[i * 2 + 1];
+            
+            // Reconstruir el valor entero signed de 16 bits (PCM Little Endian)
+            let sample = low | (high << 8);
+            if (sample & 0x8000) {
+                sample = sample - 0x10000;
+            }
+            
+            // Energía total
+            sumSquared += sample * sample;
+            
+            
+            // Componente 2400 Hz (Space)
+            const angle2400 = theta2400 * i;
+            real2400 += sample * Math.cos(angle2400);
+            imag2400 += sample * Math.sin(angle2400);
+            
+            // Componente 1200 Hz (Mark)
+            const angle1200 = theta1200 * i;
+            real1200 += sample * Math.cos(angle1200);
+            imag1200 += sample * Math.sin(angle1200);
+        }
+        
+        // Calcular RMS Total (como referencia e indicador)
+        const rmsTotal = Math.sqrt(sumSquared / sampleCount);
+        
+        // Magnitud y amplitud a 2400 Hz
+        const mag2400 = Math.sqrt(real2400 * real2400 + imag2400 * imag2400);
+        const amp2400 = (2 * mag2400) / sampleCount;
+        
+        // Magnitud y amplitud a 1200 Hz
+        const mag1200 = Math.sqrt(real1200 * real1200 + imag1200 * imag1200);
+        const amp1200 = (2 * mag1200) / sampleCount;
+        
+        
+        // Cociente espectral de potencia: P_1200 / P_total para elminar el ruido de estática
+        const pTotal = rmsTotal * rmsTotal;
+        const p1200 = 0.5 * amp1200 * amp1200;
+        const ratio = p1200 / (pTotal + 1e-12);
+        
+        let dbVU = 10 * Math.log10(ratio + 1e-12);
+        if (dbVU > 0) dbVU = 0;
+        if (dbVU < -60 || isNaN(dbVU) || !isFinite(dbVU)) dbVU = -60;
+        
+        // Habilitar indicador si la radio no está en silencio absoluto y la potencia se concentra en 1200 Hz
+        const hasSignal = (rmsTotal >= 15 && dbVU >= -23);
+        
+        const titleEl = document.getElementById('vu-title');
+        const bar = document.getElementById('vu-bar');
+        const text = document.getElementById('vu-db-text');
+        
+        // (Monitoreo de audio crudo en tiempo real - el mute se controla directamente por evento)
+        
+        if (hasSignal) {
+            smoothedDb = dbVU;
+            // Escala logarítmica calibrada: de -23 dB (0% en barra) a 0 dB (100% en barra)
+            let porcentaje = ((smoothedDb + 23) / 23) * 100;
+            if (porcentaje < 0) porcentaje = 0;
+            if (porcentaje > 100) porcentaje = 100;
+            
+            if (titleEl) {
+                titleEl.innerText = "📊 Señal Detectada (AFSK 1200 Hz)";
+                titleEl.style.color = "var(--accent-primary)";
+            }
+            
+            if (bar && text) {
+                bar.style.width = `${porcentaje}%`;
+                text.innerText = `${smoothedDb.toFixed(1)} dB`;
+                
+                if (smoothedDb > -6) {
+                    bar.style.boxShadow = '0 0 10px rgba(239, 68, 68, 0.6)';
+                } else if (smoothedDb > -12) {
+                    bar.style.boxShadow = '0 0 10px rgba(245, 158, 11, 0.5)';
+                } else if (smoothedDb > -18) {
+                    bar.style.boxShadow = '0 0 10px rgba(16, 185, 129, 0.4)';
+                } else {
+                    bar.style.boxShadow = 'none';
+                }
+            }
+        } else {
+            // Sin señal útil a 1200 Hz o solo estática: VU al mínimo
+            smoothedDb = -60.0;
+            
+            if (titleEl) {
+                titleEl.innerText = "📊 Canal Inactivo (Buscando Señal...)";
+                titleEl.style.color = "var(--text-muted)";
+            }
+            
+            if (bar && text) {
+                bar.style.width = "0%";
+                text.innerText = "Sin Señal";
+                bar.style.boxShadow = 'none';
+            }
+        }
+        
+        // (Detector de patrones de anuncio y tono de presencia removido para simplificación)
+    }
+
+    // Variables de control de estado desacopladas
+    let isListeningActive = false; // Por defecto empezamos silenciados para evitar ruidos de estática molestos al cargar
+
+    // Al cargar la página, iniciamos el stream de fondo automáticamente para tener señal y VU-meter listos
+    window.addEventListener('DOMContentLoaded', () => {
+        // Inicializar reproductor de tiempo real
+        realTimePlayer.stop();
+        realTimePlayer.init();
+        realTimePlayer.setMuted(true); // Empezar silenciado
+
+        // Configurar UI de escucha (silenciado al inicio)
+        const btnListen = document.getElementById('btnListen');
+        btnListen.classList.remove('listening');
+        btnListen.innerHTML = '<span>🔊</span> Escuchar Canal';
+
+        // Iniciar la tubería de datos asíncrona permanente
+        isRecording = true; // Mantener la tubería de red abierta
+        abortController = new AbortController();
+        leerStream();
+    });
+
+    // --- ACCIÓN: TOGGLE DE GRABACIÓN MANUAL (🔴 Iniciar / ⏹️ Guardar) ---
+    document.getElementById('btnMonitor').onclick = async () => {
+        const btnMonitor = document.getElementById('btnMonitor');
+
+        if (isSavingAudio) {
+            // DETENER GRABACIÓN Y GUARDAR ARCHIVO
+            isSavingAudio = false;
+            btnMonitor.innerHTML = '<span>🔴</span> Iniciar Grabación';
+            btnMonitor.classList.remove('recording');
+
+            // Ocultar barra de progreso
+            document.getElementById('progress-container').style.display = 'none';
+
+            // Procesar y descargar el archivo WAV acumulado
+            document.getElementById('status').innerText = "Procesando grabación útil...";
+            await guardarGrabacionAcumulada(totalBytesSaved);
+        } else {
+            // INICIAR GRABACIÓN
+            recordedChunks = [];
+            totalBytesSaved = 0;
+            isSavingAudio = true;
+
+            btnMonitor.innerHTML = '<span>⏹️</span> Detener y Guardar';
+            btnMonitor.classList.add('recording');
+
+            // Limpiar reproductor post-captura anterior
+            const audioPlayer = document.getElementById('audio-player');
+            const playerContainer = document.getElementById('player-container');
+            if (audioPlayer && playerContainer) {
+                audioPlayer.pause();
+                audioPlayer.src = "";
+                playerContainer.style.display = 'none';
+            }
+
+            // Mostrar y resetear barra de progreso de grabación
+            document.getElementById('progress-container').style.display = 'block';
+            document.getElementById('progress-bar').style.width = '0%';
+            document.getElementById('progress-time-text').innerText = '0.0s';
+            document.getElementById('progress-samples').innerText = 'Muestras: 0';
+            document.getElementById('progress-mem').innerText = '0s | 0 KB';
+
+            document.getElementById('status').innerHTML = `
+                <span class="pulsing-dot" style="background-color: #ef4444; box-shadow: 0 0 8px #ef4444;"></span>
+                <span style="color: #ef4444; font-weight: bold;">🔴 Grabando transmisión en memoria...</span>
+            `;
+        }
+    };
+
+    // --- ACCIÓN: TOGGLE DE ESCUCHA DE PARLANTE (🔊 Escuchar / 🔇 Silenciar) ---
+    document.getElementById('btnListen').onclick = () => {
+        const btnListen = document.getElementById('btnListen');
+        
+        if (isListeningActive) {
+            // Silenciar parlante
+            realTimePlayer.setMuted(true);
+            isListeningActive = false;
+            btnListen.classList.remove('listening');
+            btnListen.innerHTML = '<span>🔊</span> Escuchar Canal';
+            console.log('[Audio] Salida de parlante silenciada.');
+        } else {
+            // Activar parlante
+            realTimePlayer.setMuted(false);
+            isListeningActive = true;
+            btnListen.classList.add('listening');
+            btnListen.innerHTML = '<span>🔇</span> Silenciar Canal';
+            console.log('[Audio] Salida de parlante activada (Tiempo Real).');
+        }
+    };
+
+    // --- FUNCIÓN ASÍNCRONA DE LECTURA DEL STREAM HTTP (Tubería permanente de datos) ---
+    async function leerStream() {
+        const signal = abortController.signal;
+
+        try {
+            const response = await fetch('/stream', { signal });
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const reader = response.body.getReader();
+            
+            document.getElementById('status').innerHTML = `
+                <span class="pulsing-dot" style="background-color: var(--accent-secondary);"></span>
+                <span>Conectado. Canal listo.</span>
+            `;
+
+            // Habilitar controles visualmente
+            document.getElementById('vu-container').style.opacity = '1.0';
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                // 1. GRABACIÓN (Prioridad Absoluta en memoria)
+                if (isSavingAudio) {
+                    recordedChunks.push(value);
+                    totalBytesSaved += value.length;
+                }
+
+                // 2. AUDIO EN VIVO (Secundario, aislado de fallos)
+                try {
+                    realTimePlayer.playPCM(value);
+                } catch (audioErr) {
+                    console.warn('[Audio] Error en reproducción local (no afecta la grabación):', audioErr);
+                }
+
+                // 3. VU METER (Cálculo de decibelios e indicación espectral de ruido/señal)
+                let bytesCopied = 0;
+                while (bytesCopied < value.length) {
+                    const bytesNeeded = 38400 - bytesInVU;
+                    const bytesToCopy = Math.min(bytesNeeded, value.length - bytesCopied);
+
+                    accumulatedBytesForVU.set(value.subarray(bytesCopied, bytesCopied + bytesToCopy), bytesInVU);
+                    bytesInVU += bytesToCopy;
+                    bytesCopied += bytesToCopy;
+
+                    if (bytesInVU === 38400) {
+                        actualizarVUMeterCon2400Hz(accumulatedBytesForVU);
+
+                        // Actualizar telemetría de grabación si está activa
+                        if (isSavingAudio) {
+                            const segundos = totalBytesSaved / 38400;
+                            document.getElementById('progress-bar').style.width = `${Math.min(100, (segundos % 60) * 1.66)}%`;
+                            document.getElementById('progress-time-text').innerText = `${segundos.toFixed(1)}s`;
+                            document.getElementById('progress-samples').innerText = `Muestras: ${Math.floor(totalBytesSaved / 2)}`;
+                            document.getElementById('progress-mem').innerText = `${Math.floor(segundos)}s | ${(totalBytesSaved / 1024).toFixed(0)} KB`;
+                        }
+
+                        bytesInVU = 0;
+                    }
+                }
+            }
+        } catch (err) {
+            if (err.name === 'AbortError') {
+                console.log("Conexión con el hardware cerrada de forma ordenada.");
+            } else {
+                console.error("Error en la tubería de recepción de datos:", err);
+                document.getElementById('status').innerHTML = `<span style="color: var(--accent-danger);">❌ Error de conexión: ${err.message}</span>`;
+            }
+        } finally {
+            isRecording = false;
+            isSavingAudio = false;
+            
+            // Cerrar reproductor de audio
+            realTimePlayer.stop();
+            
+            // Restablecer interfaz
+            const btnMonitor = document.getElementById('btnMonitor');
+            btnMonitor.innerHTML = '<span>🔴</span> Iniciar Grabación';
+            btnMonitor.classList.remove('recording');
+
+            const btnListen = document.getElementById('btnListen');
+            btnListen.classList.remove('listening');
+            btnListen.innerHTML = '<span>🔊</span> Escuchar Canal';
+            isListeningActive = false;
+        }
+    }
+
+    // --- DESCARGA DE ARCHIVOS EN EL CLIENTE ---
+    function descargarBlob(blob, nombreArchivo) {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = nombreArchivo;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }
+
+    // --- PROCESAR, DAR FORMATO WAV Y EXPORTAR ---
+    async function guardarGrabacionAcumulada(totalBytes) {
+        document.getElementById('btnMonitor').disabled = false;
+        
+        if (totalBytes === 0) {
+            document.getElementById('status').innerText = "Grabación finalizada vacía o cancelada.";
+            document.getElementById('progress-container').style.display = 'none';
+            
+            // Apagar VU Meter
+            document.getElementById('vu-container').style.opacity = '0.4';
+            document.getElementById('vu-title').innerText = '📊 Canal Inactivo (Buscando Señal...)';
+            document.getElementById('vu-bar').style.width = '0%';
+            document.getElementById('vu-db-text').innerText = 'Sin Señal';
+            document.getElementById('vu-bar').style.boxShadow = 'none';
+            return;
+        }
+
+        document.getElementById('status').innerText = "Empaquetando archivos...";
+
+        // Unificar todos los Uint8Array chunks en un único gran ArrayBuffer
+        const wavDataBuffer = new ArrayBuffer(totalBytes);
+        const u8View = new Uint8Array(wavDataBuffer);
+        let offset = 0;
+        for (const chunk of recordedChunks) {
+            u8View.set(chunk, offset);
+            offset += chunk.length;
+        }
+
+        const ahora = new Date();
+        const anio = ahora.getFullYear();
+        const mes = String(ahora.getMonth() + 1).padStart(2, '0');
+        const dia = String(ahora.getDate()).padStart(2, '0');
+        const horas = String(ahora.getHours()).padStart(2, '0');
+        const minutos = String(ahora.getMinutes()).padStart(2, '0');
+        const segundos = String(ahora.getSeconds()).padStart(2, '0');
+        
+        const timestampArchivo = `${anio}${mes}${dia}_${horas}${minutos}${segundos}`;
+        
+        const offsetMin = -ahora.getTimezoneOffset();
+        const signo = offsetMin >= 0 ? '+' : '-';
+        const offsetHoras = String(Math.floor(Math.abs(offsetMin) / 60)).padStart(2, '0');
+        const offsetMinutos = String(Math.abs(offsetMin) % 60).padStart(2, '0');
+        const zonaHoraria = `${signo}${offsetHoras}:${offsetMinutos}`;
+        const timestampLocalCompleto = `${anio}-${mes}-${dia}T${horas}:${minutos}:${segundos}${zonaHoraria}`;
+
+        const nombreWav = `audio_sdr_${timestampArchivo}.wav`;
+        const nombreCsv = `audio_sdr_${timestampArchivo}.csv`;
+
+        // Generar cabecera WAV de 16-bit 19200Hz mono
+        const wavHeader = createWavHeader(totalBytes);
+        const wavBlob = new Blob([wavHeader, wavDataBuffer], { type: 'audio/wav' });
+
+        // Generar archivo CSV de telemetría GPS
+        let csvContent = "\ufeff";
+        csvContent += "Parametro,Valor,Descripcion\r\n";
+        csvContent += `Archivo_Audio,${nombreWav},Nombre del audio WAV capturado\r\n`;
+        csvContent += `Timestamp_Celular_Local,${timestampLocalCompleto},Fecha y hora del dispositivo celular\r\n`;
+        
+        if (gpsDatos) {
+            csvContent += `Latitud,${gpsDatos.latitud.toFixed(7)},Latitud en grados decimales (WGS-84)\r\n`;
+            csvContent += `Longitud,${gpsDatos.longitud.toFixed(7)},Longitud en grados decimales (WGS-84)\r\n`;
+            csvContent += `Precision_Metros,${gpsDatos.precision.toFixed(2)},Margen de error horizontal reportado por el celular\r\n`;
+            csvContent += `Altitud_Metros,${gpsDatos.altitud !== null ? gpsDatos.altitud.toFixed(2) : "No disponible"},Altitud elipsoidal en metros\r\n`;
+            csvContent += `Velocidad_M_S,${gpsDatos.velocidad !== null ? gpsDatos.velocidad.toFixed(2) : "No disponible"},Velocidad de traslacion del celular (m/s)\r\n`;
+            csvContent += `Rumbo_Grados,${gpsDatos.rumbo !== null ? gpsDatos.rumbo.toFixed(2) : "No disponible"},Curso o direccion del movimiento en grados\r\n`;
+            csvContent += `Timestamp_GPS_UTC,${gpsDatos.timestampGPS},Momento de lectura real de los satelites (UTC)\r\n`;
+        } else {
+            csvContent += `Latitud,No disponible,Ubicacion no registrada\r\n`;
+            csvContent += `Longitud,No disponible,Ubicacion no registrada\r\n`;
+            csvContent += `Precision_Metros,No disponible,Ubicacion no registrada\r\n`;
+            csvContent += `Altitud_Metros,No disponible,Ubicacion no elipsoidal\r\n`;
+            csvContent += `Timestamp_GPS_UTC,No disponible,Ubicacion no disponible\r\n`;
+            if (gpsError) {
+                csvContent += `Error_GPS_Captura,"${gpsError.replace(/"/g, '""')}",Motivo de falla de geolocalizacion\r\n`;
+            }
+        }
+        
+        csvContent += `Dispositivo,Navegador Web Movil,Medio de captura de telemetria\r\n`;
+        csvContent += `Frecuencia_Muestreo_Hz,19200,Tasa de digitalizacion del ADC\r\n`;
+        csvContent += `Muestras_Totales,${totalBytes / 2},Total de muestras capturadas (16-bit)\r\n`;
+        csvContent += `Duracion_Segundos,${(totalBytes / 38400).toFixed(3)},Duracion temporal calculada\r\n`;
+        csvContent += `Proyecto,Intercomunicador SDR - INAUT (UNSJ),Investigacion de canal de transmision AFSK\r\n`;
+
+        const csvBlob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+
+        // Disparar las descargas automáticas
+        descargarBlob(wavBlob, nombreWav);
+        
+        // Cargar en el reproductor de audio post-captura
+        const audioUrl = URL.createObjectURL(wavBlob);
+        const playerContainer = document.getElementById('player-container');
+        const audioPlayer = document.getElementById('audio-player');
+        const playerFilename = document.getElementById('player-filename');
+        if (playerContainer && audioPlayer && playerFilename) {
+            audioPlayer.src = audioUrl;
+            playerFilename.innerText = nombreWav;
+            playerContainer.style.display = 'block';
+            playerContainer.style.opacity = '1.0';
+        }
+
+        setTimeout(() => {
+            descargarBlob(csvBlob, nombreCsv);
+            document.getElementById('status').innerHTML = `
+                <span style="color: var(--accent-primary); font-weight: bold;">✅ ¡Captura Guardada!</span><br>
+                <span style="font-size:12px; color:var(--text-muted);">
+                    Archivos descargados: <b>${nombreWav}</b> y <b>${nombreCsv}</b>
+                </span>
+            `;
+            
+            document.getElementById('progress-container').style.display = 'none';
+            
+            // Apagar VU Meter en la UI
+            document.getElementById('vu-container').style.opacity = '0.4';
+            document.getElementById('vu-title').innerText = '📊 Canal Inactivo (Buscando Señal...)';
+            document.getElementById('vu-bar').style.width = '0%';
+            document.getElementById('vu-db-text').innerText = 'Sin Señal';
+            document.getElementById('vu-bar').style.boxShadow = 'none';
+        }, 400);
+    }
+
+
+ 
+    // --- BOTÓN REINTENTAR GPS ---
+    document.getElementById('btn-gps-retry').onclick = () => {
+        iniciarSeguimientoGPS();
+    };
+
+    // --- INICIALIZACIÓN AUTOMÁTICA AL CARGAR LA PÁGINA ---
+    window.addEventListener('load', () => {
+        iniciarSeguimientoGPS();
+        
+        // (Escucha de audio crudo en vivo integrada directamente)
+        
+        console.log("[Web DAQ] GPS y controles activados. Listo para iniciar monitoreo.");
+    });
+</script>
+</body>
+</html>

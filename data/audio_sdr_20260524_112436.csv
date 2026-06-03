@@ -1,0 +1,15 @@
+﻿Parametro,Valor,Descripcion
+Archivo_Audio,audio_sdr_20260524_112436.wav,Nombre del audio WAV capturado
+Timestamp_Celular_Local,2026-05-24T11:24:36-03:00,Fecha y hora del dispositivo celular
+Latitud,-31.5127789,Latitud en grados decimales (WGS-84)
+Longitud,-68.5082238,Longitud en grados decimales (WGS-84)
+Precision_Metros,3.00,Margen de error horizontal reportado por el celular
+Altitud_Metros,649.70,Altitud elipsoidal en metros
+Velocidad_M_S,0.03,Velocidad de traslacion del celular (m/s)
+Rumbo_Grados,No disponible,Curso o direccion del movimiento en grados
+Timestamp_GPS_UTC,2026-05-24T14:24:36.449Z,Momento de lectura real de los satelites (UTC)
+Dispositivo,Navegador Web Movil,Medio de captura de telemetria
+Frecuencia_Muestreo_Hz,8000,Tasa de digitalizacion del ADC
+Muestras_Totales,173000,Total de muestras capturadas (16-bit)
+Duracion_Segundos,21.625,Duracion temporal calculada
+Proyecto,Intercomunicador SDR - INAUT (UNSJ),Investigacion de canal de transmision AFSK
