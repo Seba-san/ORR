@@ -10,19 +10,15 @@ Este repositorio contiene el diseño de *hardware*, el *firmware* embebido y la 
 
 El despliegue de plataformas robóticas autónomas en entornos agrícolas reales (como olivares o viñedos) enfrenta atenuación electromagnética en las bandas tradicionales de $2.4\text{ GHz}$ o $5.8\text{ GHz}$ debido a la absorción por la biomasa y el follaje húmedo. Para sortear esta limitación física, el proyecto **ORR** propone una arquitectura de acoplamiento no intrusiva que convierte transceptores analógicos de FM comerciales (como el **Baofeng UV-82**) en radio-módems digitales de datos en la banda de VHF.
 
-![Prototipo de radio-módem digital acoplado a transceptor analógico](./assets/foto_prototipo.png)
+<p align="center">
+  <img src="./assets/foto_prototipo.png" width="320" alt="Prototipo de radio-módem digital acoplado a transceptor analógico" />
+</p>
 
 Mediante el uso de un microcontrolador (**Raspberry Pi Pico 2W**), se implementa un módem AFSK (*Audio Frequency Shift Keying*) a velocidades de hasta 1200 baudios. El sistema se comporta como un bloque físico autónomo que reduce los costos de equipamiento en más de dos órdenes de magnitud respecto a transceptores tácticos industriales.
 
-```
-┌─────────────────────────────────┐           ┌─────────────────────────────────┐
-│       Nodo Transmisor (TX)       │           │        Nodo Receptor (RX)       │
-│  [Pico 2W] ──(AFSK)──> [UV-82]   │ ──(RF)──> │  [UV-82] ──(Audio)──> [Pico 2W] │
-│      │                   ▲       │           │                          │      │
-│      └──────(PTT)────────┘       │           │                          ▼      │
-│  (Alimentación unificada LDO)    │           │            (Streaming Wi-Fi / TCP)      │
-└─────────────────────────────────┘           └─────────────────────────────────┘
-```
+<p align="center">
+  <img src="./assets/diagrama_bloques.png" width="650" alt="Diagrama de bloques de la arquitectura del sistema ORR" />
+</p>
 
 ---
 
