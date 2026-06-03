@@ -10,6 +10,8 @@ Este repositorio contiene el diseño de *hardware*, el *firmware* embebido y la 
 
 El despliegue de plataformas robóticas autónomas en entornos agrícolas reales (como olivares o viñedos) enfrenta atenuación electromagnética en las bandas tradicionales de $2.4\text{ GHz}$ o $5.8\text{ GHz}$ debido a la absorción por la biomasa y el follaje húmedo. Para sortear esta limitación física, el proyecto **ORR** propone una arquitectura de acoplamiento no intrusiva que convierte transceptores analógicos de FM comerciales (como el **Baofeng UV-82**) en radio-módems digitales de datos en la banda de VHF.
 
+![Prototipo de radio-módem digital acoplado a transceptor analógico](./assets/foto_prototipo.png)
+
 Mediante el uso de un microcontrolador (**Raspberry Pi Pico 2W**), se implementa un módem AFSK (*Audio Frequency Shift Keying*) a velocidades de hasta 1200 baudios. El sistema se comporta como un bloque físico autónomo que reduce los costos de equipamiento en más de dos órdenes de magnitud respecto a transceptores tácticos industriales.
 
 ```
@@ -32,7 +34,7 @@ Mediante el uso de un microcontrolador (**Raspberry Pi Pico 2W**), se implementa
 * **Prevención de Bucles de Masa:** Las masas analógicas y digitales se aíslan en el diseño del conector *jack* de audio, suprimiendo ruidos de conmutación electromagnética que degradarían la relación señal-ruido (SNR).
 
 ### 2. Gabinete Mecánico Impreso en 3D
-* **Diseño Protector:** Carcasa diseñada para impresión 3D en PETG o ABS que protege la electrónica discreta contra las vibraciones de la maquinaria agrícola.
+* **Diseño Protector:** Carcasa diseñada para impresión 3D en PLA o PETG que protege la electrónica discreta contra las vibraciones de la maquinaria agrícola.
 * **Encastre Antieyección:** Estructura con ranuras específicas que aseguran físicamente el pestillo de liberación de la batería de la radio, previniendo desconexiones accidentales durante el trabajo de campo.
 
 ### 3. *Firmware* Embebido (MicroPython)
@@ -52,6 +54,10 @@ Mediante el uso de un microcontrolador (**Raspberry Pi Pico 2W**), se implementa
 
 Los ensayos de campo se realizaron en un olivar de producción intensiva en San Juan, Argentina, inyectando tramas balanceadas PRBS-7 de 127 bits de longitud repetidas de forma continua. Se operó a una potencia de $1.0\text{ W}$ en la frecuencia VHF de $139.970\text{ MHz}$.
 
+![Entorno del ensayo en olivar de producción intensiva](./assets/entorno_campo.jpg)
+
+![Mapa de puntos de ensayo y geolocalización de las mediciones](./assets/mapa_ensayo.png)
+
 A continuación se resumen los resultados obtenidos a diferentes distancias y velocidades:
 
 | Distancia | Baudrate (Velocidad) | BER (% de Error) | Confianza Promedio ($C_k$) | Comentarios de Canal |
@@ -60,6 +66,8 @@ A continuación se resumen los resultados obtenidos a diferentes distancias y ve
 | **240 m**<br>*(Borde del Predio)* | 300 bd<br>1200 bd | 1.88%<br>7.45% | 0.731<br>0.375 | Línea de vista parcial. Atenuación de agudos perceptible a alta velocidad. |
 | **580 m**<br>*(Bajo Follaje)* | 300 bd<br>1200 bd | 2.17%<br>8.14% | 0.626<br>0.378 | Obstrucción moderada por biomasa. Difracción efectiva en VHF. |
 | **1500 m**<br>*(Largo Alcance)* | **300 bd**<br>1200 bd | **2.39%**<br>44.53% | **0.714**<br>0.350 | **Obstrucción por árboles adultos sin línea de vista. Configuración con tasa de error mínima a 300 bd.** |
+
+![Curvas experimentales de tasa de errores de bit (BER) vs velocidad y distancia](./assets/curva_ber.png)
 
 ---
 

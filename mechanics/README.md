@@ -18,7 +18,7 @@ El diseño del gabinete ha sido desarrollado considerando las condiciones de vib
 
 Para garantizar la durabilidad a la intemperie y resistencia a la radiación solar en cultivos agrícolas, se sugieren los siguientes parámetros:
 
-* **Material:** **PETG** o **ABS** (se desaconseja el uso de PLA debido a su baja tolerancia térmica ante la exposición solar directa en el campo).
+* **Material:** **PLA** o **PETG** (seleccionados de acuerdo a la facilidad de impresión y la tolerancia térmica requerida).
 * **Altura de Capa:** $0.2\text{ mm}$ o $0.15\text{ mm}$ para un encastre preciso.
 * **Relleno (Infill):** $25\text{ a } 35\%$ con patrón giroidal (*gyroid*) o rejilla para maximizar la resistencia a impactos.
 * **Perímetros (Muros):** Mínimo 3 de espesor.
