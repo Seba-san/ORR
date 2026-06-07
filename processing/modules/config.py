@@ -69,7 +69,7 @@ FFT_SOLAPAMIENTO     = 0.75  # Fracción de solapamiento entre ventanas consecut
                               # 0.75 → 75% de overlap → mayor resolución temporal
 
 # Tipo de ventana de ponderación para la FFT (reduce las fugas espectrales)
-# 'hann' es el equilibrio óptimo entre resolución y supresión de lóbulos laterales.
+# 'hann' es el equilibrio entre resolución y supresión de lóbulos laterales.
 FFT_TIPO_VENTANA = 'hann'
 
 # ============================================================================
@@ -112,34 +112,13 @@ PRBS7_LONGITUD_CICLO = 127    # Bits por ciclo completo (2^7 - 1)
 
 # Umbral mínimo de confianza Ck para considerar un bit como "dato válido".
 # Bits con Ck < UMBRAL_CONFIANZA_MINIMA se marcan como "baja confianza".
-# Rango: [0.0 = máxima incertidumbre, 1.0 = certeza absoluta]
+# Rango: [0.0 = máxima incertidumbre, 1.0 = certeza]
 UMBRAL_CONFIANZA_MINIMA = 0.15  # Valor inicial conservador; ajustar en HITL 3
 
 # Umbral de energía para detectar segmentos activos (con señal) vs. silencio.
 # Se usa en la detección de actividad previa al análisis. Es relativo a la
 # energía RMS del archivo completo.
 UMBRAL_ACTIVIDAD_RMS = 0.10  # 10% del RMS máximo del archivo
-
-# ============================================================================
-#  RUTAS DE ARCHIVOS DE AUDIO (Casos de Prueba)
-# ============================================================================
-
-# Directorio base de los audios reales de laboratorio
-_DIR_AUDIOS = os.path.join(os.path.dirname(__file__), 'audios_reales')
-# Fallback local para el espacio de trabajo si no se han descargado al repositorio
-if not os.path.exists(_DIR_AUDIOS):
-    _DIR_AUDIOS = '/home/seba/Dropbox/1_UNSJ/1_proyectos_investigacion/intercomunicador/antigravity/tx_test/demodulador_universal/audios_reales'
-
-# Casos de prueba representativos seleccionados por el operador humano en HITL 0.
-# Ver plan_de_accion.md para la justificación de cada selección.
-AUDIOS_PRUEBA = {
-    'audio_01': os.path.join(_DIR_AUDIOS, 'audio_sdr_20260525_003630.wav'),
-    'audio_02': os.path.join(_DIR_AUDIOS, 'audio_sdr_20260525_003813.wav'),
-    'audio_03': os.path.join(_DIR_AUDIOS, 'audio_sdr_20260525_004026.wav'),
-    'audio_04': os.path.join(_DIR_AUDIOS, 'audio_sdr_20260525_004221.wav'),
-    'audio_05': os.path.join(_DIR_AUDIOS, 'audio_sdr_20260525_004351.wav'),
-    'audio_06': os.path.join(_DIR_AUDIOS, 'audio_sdr_20260525_004432.wav'),
-}
 
 # ============================================================================
 #  CONFIGURACIÓN DE SALIDA Y REPORTES
