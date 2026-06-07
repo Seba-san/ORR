@@ -1,11 +1,11 @@
 """
-analizador_espectral.py — Calibración Espectral Aislada de Precisión (Ventana de 5 Segundos)
+analizador_espectral.py — Calibración Espectral Aislada (Ventana de 5 Segundos)
 ============================================================================
 Proyecto : Comunicación Digital sobre Radios Analógicas FM (JAR 2026)
 Instituto: Instituto de Automática (INAUT) — UNSJ — CONICET
 
 Implementa el segundo eslabón de la cadena de demodulación: el análisis
-espectral de precisión para autocalibrar las frecuencias reales de los
+espectral para autocalibrar las frecuencias reales de los
 tonos Mark y Space presentes en la señal grabada.
 
 Estrategia (Revisada y Certificada tras HITL 1):
@@ -47,7 +47,7 @@ class ResultadoEspectral:
 
 class AnalizadorEspectral:
     """
-    Analizador espectral de precisión para calibrar tonos AFSK en radios FM.
+    Analizador espectral para calibrar tonos AFSK en radios FM.
 
     Garantiza que la ventana de 5.0 segundos caiga en el centro estable de la
     primera ráfaga útil de transmisión, libre del silencio intermedio de 30s.
@@ -178,7 +178,7 @@ class AnalizadorEspectral:
         Pasos:
           1. Localiza un segmento de 5s garantizado en el centro de la primera ráfaga.
           2. Multiplica por ventana Hann de 40000 muestras y calcula la FFT.
-          3. Localiza con precisión los picos de Mark y Space.
+          3. Localiza los picos de Mark y Space.
           4. Estima la relación señal a ruido efectiva.
         """
         resultado = ResultadoEspectral()
@@ -230,7 +230,7 @@ class AnalizadorEspectral:
 
     def imprimir_reporte(self, resultado: ResultadoEspectral):
         """
-        Imprime un reporte estructurado de calibración espectral con precisión sub-hertz.
+        Imprime un reporte estructurado de calibración espectral con resolución sub-hertz.
         """
         print("\n[AnalizadorEspectral] === Reporte de Calibración Hiper-Resolución ===")
         print(f"  Segmento Útil Analizado : {resultado.segmento_inicio/self.fs:.3f}s — "
