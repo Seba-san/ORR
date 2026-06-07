@@ -30,7 +30,7 @@ class DetectorBaudios:
         if config.MODO_VERBOSE:
             print(f"[DetectorBaudios] Inicializado. Candidatos: {self.candidatos} baudios")
 
-    def detectar(self, señal_filtrada: np.ndarray, f_mark: float = None, f_space: float = None, segmento_inicio: int = 0) -> float:
+    def detectar(self, señal_filtrada: np.ndarray, f_mark: float = None, f_space: float = None, segmento_inicio: int = 0, segmento_fin: int = None) -> float:
         """
         Analiza la señal filtrada de entrada y estima la velocidad nominal (Baud Rate)
         ejecutando pruebas de demodulación y seleccionando la velocidad con menor
@@ -108,13 +108,21 @@ class DetectorBaudios:
             best_ber_baud = 1.0
             for candidate_start in rango_busqueda:
                 bits_cand = []
-                for i in range(127):
+                if segmento_fin is not None:
+                    max_bits = max(0, int((segmento_fin - candidate_start) / N_s))
+                    limit_bits = min(127, max_bits)
+                else:
+                    limit_bits = 127
+                for i in range(limit_bits):
                     idx = int(candidate_start + i * N_s + half_N)
                     if idx < len(y_balanceada):
                         bits_cand.append(1 if y_balanceada[idx] > 0 else 0)
                     else:
                         bits_cand.append(0)
-                res_cand = evaluador.calcular_ber(bits_cand)
+                if not bits_cand:
+                    res_cand = {'ber': 1.0}
+                else:
+                    res_cand = evaluador.calcular_ber(bits_cand)
                 if res_cand['ber'] < best_ber_baud:
                     best_ber_baud = res_cand['ber']
                     if best_ber_baud == 0.0:
