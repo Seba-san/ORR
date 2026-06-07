@@ -41,7 +41,7 @@ class EvaluadorBER:
 
     def alinear_secuencia(self, bits_demodulados):
         """
-        Encuentra el desfase temporal óptimo (offset de bit) mediante la maximización
+        Encuentra el desfase temporal estimado (offset de bit) mediante la maximización
         de coincidencias cíclicas con el patrón de referencia PRBS-7.
         """
         n_demod = len(bits_demodulados)
@@ -60,7 +60,7 @@ class EvaluadorBER:
                     coincide += 1
             coincidencias.append(coincide)
 
-        # El offset óptimo es el que maximiza las coincidencias
+        # El offset estimado es el que maximiza las coincidencias
         offset_optimo = np.argmax(coincidencias)
         max_aciertos = coincidencias[offset_optimo]
         precision_alineacion = max_aciertos / n_demod
@@ -70,7 +70,7 @@ class EvaluadorBER:
 
         if config.MODO_VERBOSE:
             print(f"[EvaluadorBER] Alineación completa por correlación circular:")
-            print(f"  Offset de fase óptimo : {offset_optimo} bits")
+            print(f"  Offset de fase estimado : {offset_optimo} bits")
             print(f"  Coincidencias máximas : {max_aciertos} de {n_demod} bits ({precision_alineacion*100.0:.2f}%)")
 
         return offset_optimo, precision_alineacion, secuencia_referencia
@@ -148,7 +148,7 @@ class EvaluadorBER:
 
     def graficar_perfil_errores(self, alias, res_ber, dir_salida):
         """
-        Genera el gráfico premium perfil_error_temporal.png mostrando la distribución
+        Genera el gráfico perfil_error_temporal.png mostrando la distribución
         temporal de los errores a lo largo del tiempo de la ráfaga.
         """
         vector_err = res_ber['vector_errores']
