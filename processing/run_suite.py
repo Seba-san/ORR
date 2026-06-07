@@ -36,8 +36,12 @@ def demodular_canal_universal(alias, fpath, baud_rate='auto', generar_graficos=F
     adaptando dinámicamente los anchos de banda, filtros pasa-bajos de envolvente y
     periodo de símbolo (muestras por bit) para compensar drift analógico y atenuación de RF.
     """
-    if verbose:
-        print(f"\n⚡ Procesando: {alias} | Velocidad Configurada: {baud_rate}")
+    if not verbose:
+        print(f"Procesando: {alias}...", end="", flush=True)
+    else:
+        print(f"Procesando: {alias}...", flush=True)
+        print(f"  • Velocidad Configurada: {baud_rate}")
+
     
     # 1. Cargar el audio
     fs, data = wav.read(fpath)
@@ -156,6 +160,8 @@ def demodular_canal_universal(alias, fpath, baud_rate='auto', generar_graficos=F
         print(f"  • Ganancia Compensada  : {g:.4f} (+{20*np.log10(g):.1f} dB)")
         print(f"  • Confianza Ck Promedio: {confianza_promedio:.4f}")
         print(f"  • TASA DE ERROR (BER)  : {res_ber['ber']*100.0:.4f}% ({res_ber['bits_erroneos']}/{res_ber['total_bits']} bits)")
+    else:
+        print(f" Baudios: {baud_rate} bd | BER: {res_ber['ber']*100.0:.2f}% | Errores: {res_ber['bits_erroneos']}/{res_ber['total_bits']}", flush=True)
     
     # Intentar generar el reporte de errores
     if generar_graficos:
