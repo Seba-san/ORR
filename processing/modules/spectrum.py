@@ -70,65 +70,46 @@ class AnalizadorEspectral:
 
     def _localizar_ventana_util(self, señal: np.ndarray) -> tuple:
         """
-        Aplica la heurística de aislamiento de primera ráfaga activa sostenida.
-        Estima la ráfaga continua individual mediante envolvente RMS de 100 ms y
-        posiciona la ventana de 5s en su centro exacto, evitando silencios analógicos.
+        Detecta el inicio de la modulación real filtrando la señal específicamente
+        en la banda útil de los tonos AFSK (1000 a 2600 Hz) y calculando su energía RMS.
         """
-        n_ventana_rms = int(0.10 * self.fs)
-        energia = np.convolve(señal ** 2, np.ones(n_ventana_rms) / n_ventana_rms, mode='same')
+        from scipy import signal as sp_signal
+        nyq = self.fs / 2.0
+        
+        # Filtro pasabanda Butterworth para aislar los tonos de interés
+        b, a = sp_signal.butter(4, [1000.0 / nyq, 2600.0 / nyq], btype='bandpass')
+        señal_tonos = sp_signal.lfilter(b, a, señal)
+        
+        # Potencia RMS en ventana móvil de 50 ms
+        n_win = int(0.05 * self.fs)
+        energia = np.convolve(señal_tonos ** 2, np.ones(n_win) / n_win, mode='same')
         rms_local = np.sqrt(np.maximum(energia, 0))
         
-        # Umbral del 20% del RMS máximo
-        umbral = 0.20 * np.max(rms_local)
-        activo = (rms_local > umbral).astype(int)
+        # Umbral basado en config (buscando después del transitorio inicial)
+        t_transient = int(config.TRANSITORIO_INICIO_S * self.fs)
+        umbral = config.SQUELCH_FACTOR_INICIO * np.max(rms_local[t_transient:])
+        indices_activos = np.where(rms_local > umbral)[0]
+        # Ignorar cualquier índice dentro del transitorio inicial
+        indices_activos = indices_activos[indices_activos >= t_transient]
         
-        # Detectar cambios de estado
-        cambios = np.diff(activo)
-        inicios = np.where(cambios == 1)[0] + 1
-        fines = np.where(cambios == -1)[0]
-        
-        if activo[0] == 1:
-            inicios = np.insert(inicios, 0, 0)
-        if activo[-1] == 1:
-            fines = np.append(fines, len(activo) - 1)
-            
-        if len(inicios) > len(fines):
-            inicios = inicios[:len(fines)]
-        elif len(fines) > len(inicios):
-            fines = fines[:len(inicios)]
-            
-        # Filtrar bloques con duración mínima de 4.0s
-        duracion_minima = int(4.0 * self.fs)
-        bloques_validos = []
-        for ini, fin in zip(inicios, fines):
-            if (fin - ini) >= duracion_minima:
-                bloques_validos.append((ini, fin))
-                
-        if len(bloques_validos) > 0:
-            # Seleccionar el primer bloque estable de ráfaga
-            inicio_bloque, fin_bloque = bloques_validos[0]
-            centro_bloque = inicio_bloque + (fin_bloque - inicio_bloque) // 2
+        if len(indices_activos) > 0:
+            inicio_bloque = indices_activos[0]
+            fin_bloque = indices_activos[-1]
         else:
-            # Fallback de máxima energía
-            idx_max = np.argmax(rms_local)
-            inicio_bloque = max(0, idx_max - int(2.5 * self.fs))
-            fin_bloque = min(len(señal), idx_max + int(2.5 * self.fs))
-            centro_bloque = idx_max
-
-        # Centrar la ventana de 5s en el bloque útil aislado
-        inicio = centro_bloque - self.n_ventana_5s // 2
-        
-        # Ajustar límites de seguridad
-        if inicio < 0:
-            inicio = 0
-        if inicio + self.n_ventana_5s > len(señal):
-            inicio = len(señal) - self.n_ventana_5s
+            inicio_bloque = 0
+            fin_bloque = len(señal)
             
+        centro_bloque = inicio_bloque + (fin_bloque - inicio_bloque) // 2
+        
+        # Centrar la ventana de 5s para el analizador espectral
+        inicio = max(0, centro_bloque - self.n_ventana_5s // 2)
+        if inicio + self.n_ventana_5s > len(señal):
+            inicio = max(0, len(señal) - self.n_ventana_5s)
         fin = inicio + self.n_ventana_5s
         
         if config.MODO_VERBOSE:
-            print(f"[AnalizadorEspectral] Primera ráfaga útil aislada: {inicio_bloque/self.fs:.2f}s — {fin_bloque/self.fs:.2f}s. "
-                  f"Ventana de 5s posicionada de forma definitiva en: {inicio/self.fs:.2f}s — {fin/self.fs:.2f}s")
+            print(f"[AnalizadorEspectral] Ráfaga modulada detectada: {inicio_bloque/self.fs:.2f}s — {fin_bloque/self.fs:.2f}s. "
+                  f"Ventana de 5s centrada en: {inicio/self.fs:.2f}s — {fin/self.fs:.2f}s")
                   
         return inicio, fin, inicio_bloque, fin_bloque
 

@@ -131,3 +131,32 @@ DIR_SALIDA_GRAFICOS = os.path.join(os.path.dirname(__file__), 'reportes')
 # Activar impresión detallada en consola durante el procesamiento.
 MODO_VERBOSE = False
 
+# ============================================================================
+#  CONFIGURACIONES DE FILTRADO Y DETECCIÓN (HITL 3)
+# ============================================================================
+FILTRO_BANDPASS_ORDEN    = 4     # Orden para filtros adaptativos de Mark/Space
+FILTRO_LOWPASS_ENV_ORDEN = 4     # Orden para filtro pasa-bajos de envolvente
+FILTRO_LOWPASS_ENV_FACTOR = 0.75 # Multiplicador del cutoff (factor * baud_rate)
+
+# Umbral de energía para la detección de inicio de ráfaga
+SQUELCH_FACTOR_INICIO    = 0.50  # Fracción de potencia máxima para inicio
+TRANSITORIO_INICIO_S      = 0.15  # Tiempo a omitir para evitar clicks y transitorios (segundos)
+
+# Ventana de guarda para el DPLL (para tolerancia de jitter)
+DPLL_VENTANA_GUARDA      = 0.50  # Permitir corregir hasta medio símbolo de desfase
+
+# Mapeo de bits esperados por velocidad
+BITS_POR_VELOCIDAD = {
+    10: 127,
+    50: 1270,
+    150: 3175,
+    300: 6350,
+    600: 12700,
+    1200: 12700
+}
+
+# Candidatos para la grilla de búsqueda de ganancias DPLL (Grid Search)
+DPLL_KP_CANDIDATOS = [0.01, 0.02, 0.05, 0.08, 0.12, 0.18, 0.25]
+DPLL_KI_CANDIDATOS = [0.0001, 0.0005, 0.001, 0.002, 0.004, 0.008]
+
+
