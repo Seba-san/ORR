@@ -129,4 +129,5 @@ UMBRAL_ACTIVIDAD_RMS = 0.10  # 10% del RMS máximo del archivo
 DIR_SALIDA_GRAFICOS = os.path.join(os.path.dirname(__file__), 'reportes')
 
 # Activar impresión detallada en consola durante el procesamiento.
-MODO_VERBOSE = True
+MODO_VERBOSE = False
+
