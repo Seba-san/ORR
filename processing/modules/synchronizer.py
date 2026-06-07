@@ -5,7 +5,7 @@ Proyecto : Comunicación Digital sobre Radios Analógicas FM (JAR 2026)
 Instituto: Instituto de Automática (INAUT) — UNSJ — CONICET
 
 Implementa el lazo DPLL de segundo orden para sincronizar los instantes de
-muestreo óptimo en el centro del bit (máxima apertura de ojo) y realizar un
+muestreo en el centro del bit (máxima apertura de ojo) y realizar un
 seguimiento dinámico de la deriva de reloj y fase.
 ============================================================================
 """
@@ -38,7 +38,7 @@ class SincronizadorDPLL:
     def sincronizar(self, baseband_signal):
         """
         Ejecuta el lazo cerrado DPLL sobre la señal demodulada en banda base
-        para localizar los índices óptimos de muestreo (strobes).
+        para localizar los índices de muestreo (strobes).
 
         Args:
             baseband_signal (np.ndarray): Señal de banda base demodulada (por ejemplo,
@@ -88,7 +88,7 @@ class SincronizadorDPLL:
                 # Limitar paso para evitar desenganche catastrófico
                 step = np.clip(step, 0.5 * step_nominal, 1.5 * step_nominal)
                 
-            # 3. Muestreo Óptimo (Strobe en fase = 0.5, centro del símbolo)
+            # 3. Instante de muestreo (Strobe en fase = 0.5, centro del símbolo)
             # Ocurre cuando la fase del NCO cruza el umbral medio de 0.5
             if (fase_prev < 0.5 and fase_nco >= 0.5) or (fase_prev >= 0.5 and (fase_nco - 1.0) >= 0.5):
                 indices_muestreo.append(n)
