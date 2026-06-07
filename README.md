@@ -39,10 +39,10 @@ Mediante el uso de un microcontrolador (**Raspberry Pi Pico 2W**), se implementa
 * **Protección Térmica Activa:** Máquina de estados finitos que limita la transmisión continua a un máximo de 30 segundos, forzando un ciclo de enfriamiento pasivo equivalente para prolongar la vida útil del paso final de potencia RF de la radio.
 * *****Streaming*** Asíncrono Multilazo:** Lectura en tiempo real del ADC a 19.2 kHz mediante *buffers* dobles (*ping-pong*) en el *Core* 1 de la Pico 2W, mientras que el *Core* 0 gestiona un servidor TCP *socket* embebido sobre Wi-Fi para transmitir los datos de forma inalámbrica a la base del operador.
 
-### 4. Demodulador Espectral Offline
-* **Algoritmo de Goertzel:** Demodulador espectral que extrae la energía cuadrática instantánea para los tonos de $1200\text{ Hz}$ (*Mark*) y $2400\text{ Hz}$ (*Space*) mediante un filtro IIR recursivo de segundo orden.
-* **Sincronización DPLL:** Lazo de seguimiento de fase digital de segundo orden con filtro Proporcional-Integral (PI) que ajusta la ventana de muestras para compensar derivas de reloj físico provocadas por variaciones de temperatura.
-* **Métrica de Confianza ($C_k$):** Cálculo analítico del índice de confianza de demodulación para cada bit recuperado, facilitando el descarte temprano de tramas corruptas sin sobrecargar el procesador del robot.
+### 4. Demodulador por Envolventes Balanceadas
+* **Demodulación por Envolventes Balanceadas:** Aísla las componentes de frecuencia de $1200\text{ Hz}$ (*Mark*) y $2400\text{ Hz}$ (*Space*) mediante filtros de banda Butterworth de segundo orden adaptados a la velocidad de transmisión, extrayendo sus envolventes de amplitud y restándolas mediante un factor de compensación de ganancia dinámica.
+* **Sincronización por Búsqueda de Fase:** Implementa un algoritmo de búsqueda en rejilla (*Grid Search*) que localiza el instante de muestreo de la ráfaga de datos minimizando la tasa de error de bit, manteniendo el espaciamiento de símbolos constante para compensar derivas de fase.
+* **Métrica de Confianza ($C_k$):** Cálculo analítico de la diferencia relativa entre las envolventes balanceadas de Mark y Space en cada instante de muestreo, lo que permite evaluar la calidad del bit recuperado directamente en la etapa de decisión.
 
 ---
 
@@ -81,7 +81,7 @@ ORR/
 ├── hardware/            # Esquemáticos y manual de acondicionamiento de la interfaz analógica
 │   └── esquematicos/    # Circuitos y pinout de interconexión
 ├── mechanics/           # Gabinete protector e interfaz de acople mecánico 3D (STL/STEP)
-└── processing/          # Suite de demodulación *offline* en Python (Goertzel, DPLL, BER) y MATLAB
+└── processing/          # Suite de demodulación *offline* en Python (Envolventes, Búsqueda de Fase, BER) y MATLAB
 ```
 
 ---
