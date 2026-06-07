@@ -25,7 +25,7 @@ class DetectorBaudios:
 
     def __init__(self):
         self.fs = config.FS_RX
-        self.candidatos = config.BAUD_RATES_CANDIDATOS
+        self.candidatos = config.BAUD_RATES_CANDIDATOS[::-1]
 
         if config.MODO_VERBOSE:
             print(f"[DetectorBaudios] Inicializado. Candidatos: {self.candidatos} baudios")
