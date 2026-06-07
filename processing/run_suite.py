@@ -30,13 +30,14 @@ from spectrum import AnalizadorEspectral
 from evaluator import EvaluadorBER
 from baud_detector import DetectorBaudios
 
-def demodular_canal_universal(alias, fpath, baud_rate='auto'):
+def demodular_canal_universal(alias, fpath, baud_rate='auto', generar_graficos=False, verbose=False):
     """
     Ejecuta el demodulador diferencial síncrono universal sobre un archivo WAV específico,
     adaptando dinámicamente los anchos de banda, filtros pasa-bajos de envolvente y
     periodo de símbolo (muestras por bit) para compensar drift analógico y atenuación de RF.
     """
-    print(f"\n⚡ Procesando: {alias} | Velocidad Configurada: {baud_rate}")
+    if verbose:
+        print(f"\n⚡ Procesando: {alias} | Velocidad Configurada: {baud_rate}")
     
     # 1. Cargar el audio
     fs, data = wav.read(fpath)
@@ -59,7 +60,8 @@ def demodular_canal_universal(alias, fpath, baud_rate='auto'):
     if baud_rate == 'auto':
         detector = DetectorBaudios()
         baud_rate = detector.detectar(x_filtered, f_mark, f_space, res_espectral.segmento_inicio)
-        print(f"  • Baud Rate Detectado  : {baud_rate} bd")
+        if verbose:
+            print(f"  • Baud Rate Detectado  : {baud_rate} bd")
     
     # 4. Filtros de Banda Adaptativos (Ancho de banda adaptado al Baud Rate para evitar ISI)
     half_bw = max(75.0, baud_rate / 2.0)
@@ -149,18 +151,20 @@ def demodular_canal_universal(alias, fpath, baud_rate='auto'):
     # 8. Evaluación de BER final
     res_ber = evaluador.calcular_ber(bits_decididos)
     
-    print(f"  • Sincronización inicial: primer bit en t = {first_bit_start/fs:.3f} s")
-    print(f"  • Ganancia Compensada  : {g:.4f} (+{20*np.log10(g):.1f} dB)")
-    print(f"  • Confianza Ck Promedio: {confianza_promedio:.4f}")
-    print(f"  • TASA DE ERROR (BER)  : {res_ber['ber']*100.0:.4f}% ({res_ber['bits_erroneos']}/{res_ber['total_bits']} bits)")
+    if verbose:
+        print(f"  • Sincronización inicial: primer bit en t = {first_bit_start/fs:.3f} s")
+        print(f"  • Ganancia Compensada  : {g:.4f} (+{20*np.log10(g):.1f} dB)")
+        print(f"  • Confianza Ck Promedio: {confianza_promedio:.4f}")
+        print(f"  • TASA DE ERROR (BER)  : {res_ber['ber']*100.0:.4f}% ({res_ber['bits_erroneos']}/{res_ber['total_bits']} bits)")
     
     # Intentar generar el reporte de errores
-    try:
-        # Se guardan en la carpeta de reportes relativa a run_suite.py
-        dir_graficos = os.path.join(os.path.dirname(__file__), 'reportes')
-        evaluador.graficar_perfil_errores(alias, res_ber, dir_graficos)
-    except Exception as e:
-        print(f"  ⚠️ No se pudo guardar gráfico de perfil de errores: {e}")
+    if generar_graficos:
+        try:
+            # Se guardan en la carpeta de reportes relativa a run_suite.py
+            dir_graficos = os.path.join(os.path.dirname(__file__), 'reportes')
+            evaluador.graficar_perfil_errores(alias, res_ber, dir_graficos)
+        except Exception as e:
+            print(f"  ⚠️ No se pudo guardar gráfico de perfil de errores: {e}")
         
     return {
         'alias': alias,
@@ -182,7 +186,14 @@ def main():
     parser = argparse.ArgumentParser(description="Procesamiento dinámico de audios AFSK.")
     parser.add_argument("directorio", nargs="?", default=None,
                         help="Directorio que contiene los archivos de audio .wav")
+    parser.add_argument("-v", "--verbose", action="store_true",
+                        help="Habilitar impresión de información detallada por consola")
+    parser.add_argument("-g", "--generar-graficos", action="store_true",
+                        help="Habilitar la generación de gráficos de error en el directorio de reportes")
     args = parser.parse_args()
+    
+    # Sincronizar estado global de verbosidad
+    config.MODO_VERBOSE = args.verbose
     
     # Determinar el directorio por defecto si no se especificó
     if args.directorio is None:
@@ -195,7 +206,8 @@ def main():
     else:
         directorio = args.directorio
         
-    print(f"Buscando archivos .wav en: {directorio}")
+    if args.verbose:
+        print(f"Buscando archivos .wav en: {directorio}")
     archivos = sorted(glob.glob(os.path.join(directorio, '**', '*.wav'), recursive=True))
     
     if not archivos:
@@ -206,7 +218,10 @@ def main():
     for fpath in archivos:
         alias = os.path.splitext(os.path.basename(fpath))[0]
         try:
-            res = demodular_canal_universal(alias, fpath, baud_rate='auto')
+            res = demodular_canal_universal(
+                alias, fpath, baud_rate='auto',
+                generar_graficos=args.generar_graficos, verbose=args.verbose
+            )
             resultados.append(res)
         except Exception as e:
             print(f"Error procesando {fpath}: {e}")
