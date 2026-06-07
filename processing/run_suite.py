@@ -7,7 +7,7 @@ Instituto: Instituto de Automática (INAUT) — UNSJ — CONICET
 Demodulador universal síncrono adaptativo sintonizado paso a paso para todas las
 velocidades de canal ensayadas (10, 50, 150, 300, 600, 1200 baudios).
 Aplica la técnica de compensación de atenuación analógica por Envolventes Balanceadas
-y la sincronización de fase óptima de ráfaga para obtener tasas de error de bit (BER)
+y la sincronización de fase de ráfaga para obtener tasas de error de bit (BER)
 cercanas al 0% en todos los escenarios reales de las campañas de medición.
 ============================================================================
 """
@@ -28,14 +28,15 @@ import config
 from prefilter import FiltroFIR
 from spectrum import AnalizadorEspectral
 from evaluator import EvaluadorBER
+from baud_detector import DetectorBaudios
 
-def demodular_canal_universal(alias, fpath, baud_rate):
+def demodular_canal_universal(alias, fpath, baud_rate='auto'):
     """
     Ejecuta el demodulador diferencial síncrono universal sobre un archivo WAV específico,
     adaptando dinámicamente los anchos de banda, filtros pasa-bajos de envolvente y
     periodo de símbolo (muestras por bit) para compensar drift analógico y atenuación de RF.
     """
-    print(f"\n⚡ Procesando: {alias} | Velocidad Nominal: {baud_rate} baudios")
+    print(f"\n⚡ Procesando: {alias} | Velocidad Configurada: {baud_rate}")
     
     # 1. Cargar el audio
     fs, data = wav.read(fpath)
@@ -53,9 +54,14 @@ def demodular_canal_universal(alias, fpath, baud_rate):
     res_espectral = analizador.analizar(x_filtered)
     f_mark = res_espectral.f_mark_hz
     f_space = res_espectral.f_space_hz
+
+    # Autodetección de Baud Rate si es 'auto'
+    if baud_rate == 'auto':
+        detector = DetectorBaudios()
+        baud_rate = detector.detectar(x_filtered, f_mark, f_space, res_espectral.segmento_inicio)
+        print(f"  • Baud Rate Detectado  : {baud_rate} bd")
     
     # 4. Filtros de Banda Adaptativos (Ancho de banda adaptado al Baud Rate para evitar ISI)
-    # ISI se elimina haciendo que el ancho de banda del filtro sea al menos igual al Baud Rate.
     half_bw = max(75.0, baud_rate / 2.0)
     b_m, a_m = signal.butter(2, [max(100.0, f_mark - half_bw)/nyq, min(nyq-100.0, f_mark + half_bw)/nyq], btype='bandpass')
     x_mark = signal.lfilter(b_m, a_m, x_filtered)
@@ -67,7 +73,7 @@ def demodular_canal_universal(alias, fpath, baud_rate):
     env_mark = np.abs(x_mark)
     env_space = np.abs(x_space)
     
-    # 5. Filtro Pasa-Bajos de Envolvente (Corte óptimo a 2 * Baud Rate)
+    # 5. Filtro Pasa-Bajos de Envolvente (Corte nominal a 2 * Baud Rate)
     env_lp_cutoff = min(nyq - 100.0, max(20.0, 2.0 * baud_rate))
     b_lp, a_lp = signal.butter(2, env_lp_cutoff / nyq, btype='low')
     env_mark_lp = signal.lfilter(b_lp, a_lp, env_mark)
@@ -84,8 +90,7 @@ def demodular_canal_universal(alias, fpath, baud_rate):
     
     y_balanceada = env_mark_lp - g * env_space_lp
     
-    # 7. Sincronización Temporal (Grid Search de fase óptima de ráfaga)
-    # A 1200 baudios, compensamos el drift de MicroPython del Tx usando Ts = 16.0236 muestras.
+    # 7. Sincronización Temporal (Grid Search de fase de ráfaga)
     if baud_rate == 1200:
         N_s = 16.0236
     else:
@@ -93,9 +98,6 @@ def demodular_canal_universal(alias, fpath, baud_rate):
         
     half_N = int(N_s // 2)
     
-    # Para 10 baudios (donde la ráfaga completa es muy corta respecto a la secuencia de 127 bits),
-    # debemos buscar la alineación desde el inicio real de la ráfaga usando RMS.
-    # Para velocidades más altas, buscamos en el segmento estable central (res_espectral.segmento_inicio).
     if baud_rate == 10:
         n_ventana_rms = int(0.10 * fs)
         energia = np.convolve(x_filtered ** 2, np.ones(n_ventana_rms) / n_ventana_rms, mode='same')
@@ -147,7 +149,7 @@ def demodular_canal_universal(alias, fpath, baud_rate):
     # 8. Evaluación de BER final
     res_ber = evaluador.calcular_ber(bits_decididos)
     
-    print(f"  • Sincronismo Óptimo   : primer bit en t = {first_bit_start/fs:.3f} s")
+    print(f"  • Sincronización inicial: primer bit en t = {first_bit_start/fs:.3f} s")
     print(f"  • Ganancia Compensada  : {g:.4f} (+{20*np.log10(g):.1f} dB)")
     print(f"  • Confianza Ck Promedio: {confianza_promedio:.4f}")
     print(f"  • TASA DE ERROR (BER)  : {res_ber['ber']*100.0:.4f}% ({res_ber['bits_erroneos']}/{res_ber['total_bits']} bits)")
@@ -174,41 +176,51 @@ def demodular_canal_universal(alias, fpath, baud_rate):
     }
 
 def main():
-    print("==========================================================================")
-    print("   INAUT - CONICET - UNSJ | DEMODULADOR UNIVERSAL AFSK MULTI-VELOCIDAD")
-    print("==========================================================================")
+    import argparse
+    import glob
     
-    # Enlazar audios y sus respectivas velocidades
-    ensayos = [
-        ('audio_01_10bd', config.AUDIOS_PRUEBA['audio_01'], 10),
-        ('audio_02_50bd', config.AUDIOS_PRUEBA['audio_02'], 50),
-        ('audio_03_150bd', config.AUDIOS_PRUEBA['audio_03'], 150),
-        ('audio_04_300bd', config.AUDIOS_PRUEBA['audio_04'], 300),
-        ('audio_05_600bd', config.AUDIOS_PRUEBA['audio_05'], 600),
-        ('audio_06_1200bd', config.AUDIOS_PRUEBA['audio_06'], 1200)
-    ]
+    parser = argparse.ArgumentParser(description="Procesamiento dinámico de audios AFSK.")
+    parser.add_argument("directorio", nargs="?", default=None,
+                        help="Directorio que contiene los archivos de audio .wav")
+    args = parser.parse_args()
     
-    resultados = []
-    
-    for alias, path, baud in ensayos:
-        if os.path.exists(path):
-            try:
-                res = demodular_canal_universal(alias, path, baud)
-                resultados.append(res)
-            except Exception as e:
-                print(f"❌ Error al demodular {alias}: {e}")
+    # Determinar el directorio por defecto si no se especificó
+    if args.directorio is None:
+        if os.path.exists("./audio"):
+            directorio = "./audio"
+        elif os.path.exists("./audios"):
+            directorio = "./audios"
         else:
-            print(f"⚠️ Archivo no encontrado: {path}")
-            
-    # Imprimir Reporte Consolidado Premium
-    print("\n" + "="*85)
-    print("   📊 REPORTE DE RESULTADOS CONSOLIDADOS - MÓDEM UNIVERSAL AFSK (CAMPAS DE CAMPO)")
-    print("="*85)
-    print(f" {'Canal (Alias)':<18} | {'Baudios':<7} | {'Mark (Hz)':<9} | {'Space (Hz)':<10} | {'Ganancia':<8} | {'Conf. Ck':<8} | {'BER (%)':<8}")
-    print("-"*85)
-    for r in resultados:
-        print(f" {r['alias']:<18} | {r['baud_rate']:<7d} | {r['f_mark']:<9.1f} | {r['f_space']:<10.1f} | {r['gain_compensacion_db']:>+6.1f} dB | {r['confianza_promedio']:<8.4f} | {r['ber']*100.0:<8.4f}%")
-    print("="*85)
+            directorio = "."
+    else:
+        directorio = args.directorio
+        
+    print(f"Buscando archivos .wav en: {directorio}")
+    archivos = sorted(glob.glob(os.path.join(directorio, '**', '*.wav'), recursive=True))
     
+    if not archivos:
+        print(f"No se encontraron archivos .wav en {directorio}")
+        return
+        
+    resultados = []
+    for fpath in archivos:
+        alias = os.path.splitext(os.path.basename(fpath))[0]
+        try:
+            res = demodular_canal_universal(alias, fpath, baud_rate='auto')
+            resultados.append(res)
+        except Exception as e:
+            print(f"Error procesando {fpath}: {e}")
+            
+    # Mostrar tabla resumen factual de resultados
+    if resultados:
+        print("\n==========================================================================")
+        print("   RESUMEN DE PROCESAMIENTO")
+        print("==========================================================================")
+        print(f"{'Archivo':<35} | {'Baudios':<7} | {'BER (%)':<8} | {'Errores':<8} | {'Confianza':<10}")
+        print("-" * 79)
+        for r in resultados:
+            print(f"{r['alias'][:35]:<35} | {r['baud_rate']:<7} | {r['ber']*100.0:<8.4f} | {r['bits_erroneos']:<8} | {r['confianza_promedio']:<10.4f}")
+        print("==========================================================================")
+
 if __name__ == "__main__":
     main()
