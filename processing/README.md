@@ -6,7 +6,7 @@ Esta carpeta contiene la suite de herramientas desarrolladas en **Python** para 
 
 ## 🚀 Flujo del Procesamiento Digital de Señales (DSP)
 
-El software realiza el procesamiento en cinco etapas secuenciales de bajo nivel:
+El software realiza el procesamiento en seis etapas secuenciales de bajo nivel:
 
 ```
                   +-----------------------------------+
@@ -20,30 +20,36 @@ El software realiza el procesamiento en cinco etapas secuenciales de bajo nivel:
                                     │
                                     ▼
                   +-----------------------------------+
-                  |  Analizador Fourier (Autotuning)   |
+                  |  Analizador Fourier (Autotuning)  |
                   +-----------------------------------+
                                     │
                                     ▼
                   +-----------------------------------+
-                  |    Banco de Filtros Goertzel      |
+                  |   Filtros de Banda Adaptativos    |
                   +-----------------------------------+
                                     │
                                     ▼
                   +-----------------------------------+
-                  | Sincronismo DPLL + Decisión Bit   |
+                  | Detección y Balance de Envolvente |
                   +-----------------------------------+
                                     │
                                     ▼
                   +-----------------------------------+
-                  |   Cálculo de BER y Confianza      |
+                  | Búsqueda de Fase y Decisión de Bit|
+                  +-----------------------------------+
+                                    │
+                                    ▼
+                  +-----------------------------------+
+                  |    Cálculo de BER y Confianza     |
                   +-----------------------------------+
 ```
 
-1.  **Acondicionamiento (Filtro FIR Kaiser):** Un filtro de respuesta al impulso finita (FIR) de fase lineal de orden 127 aísla la banda útil (300 Hz a 3000 Hz), barriendo ruidos fuera de banda como zumbidos de red de 50/60 Hz y clicks analógicos.
-2.  **Autocalibración Espectral (Transformada Rápida de Fourier):** Ejecuta una transformada rápida de Fourier para detectar las frecuencias reales exactas de Mark y Space, compensando corrimientos locales debidos a la deriva térmica de los microcontroladores de campo.
-3.  **Extracción de Energía (Algoritmo de Goertzel):** Aplica la estructura de filtro recursivo de respuesta al impulso infinita de segundo orden de Goertzel sintonizado exactamente a los picos reales detectados para estimar la potencia instantánea de cada tono en cada símbolo.
-4.  **Sincronismo de Reloj y DPLL:** Un lazo de seguimiento de fase digital con un controlador proporcional-integral de segundo orden rastrea y compensa la deriva del reloj físico para realizar el muestreo en el instante de máxima apertura del ojo del bit.
-5.  **Evaluación de BER:** Alinea la secuencia demodulada mediante correlación cruzada contra el patrón local PRBS-7 de 127 bits de Golomb ($y(n) = y(n-6) \oplus y(n-7)$) y computa la Tasa de Error de Bit (BER) exacta sobre toda la ráfaga.
+1.  **Acondicionamiento (Filtro FIR Kaiser):** Un filtro de respuesta al impulso finita (FIR) de fase lineal de orden 127 aísla la banda útil (300 Hz a 3000 Hz), eliminando ruidos fuera de banda tales como zumbidos de red de 50/60 Hz.
+2.  **Autocalibración Espectral (Transformada Rápida de Fourier):** Ejecuta una transformada rápida de Fourier para detectar las frecuencias reales del transmisor (Mark y Space), compensando corrimientos locales debidos a derivas térmicas de los osciladores.
+3.  **Filtros de Banda Adaptativos:** Aplica filtros pasa-banda Butterworth de segundo orden con ancho de banda adaptado al *baudrate* de transmisión para separar las componentes de Mark y Space minimizando la interferencia intersimbólica (ISI).
+4.  **Detección y Balance de Envolvente:** Estima las envolventes de amplitud mediante el valor absoluto de las señales de salida filtradas y un filtro pasa-bajos Butterworth de segundo orden. A partir de los percentiles de amplitud en el segmento activo, calcula y aplica un factor de ganancia de balance $g$ para restar la atenuación de alta frecuencia en la línea: $y_{\text{balanceada}} = env_{\text{mark}} - g \cdot env_{\text{space}}$.
+5.  **Búsqueda de Fase y Decisión de Bit:** Realiza una búsqueda en rejilla (*Grid Search*) de la fase temporal inicial de la ráfaga de datos para alinear el instante de muestreo del primer bit minimizando la tasa de error de bit (BER), evaluando luego la secuencia a intervalos constantes.
+6.  **Evaluación de BER:** Alinea la secuencia demodulada mediante correlación cruzada contra el patrón local PRBS-7 de 127 bits de Golomb ($y(n) = y(n-6) \oplus y(n-7)$) y calcula la Tasa de Error de Bit (BER) sobre la ráfaga completa.
 
 ---
 
@@ -59,12 +65,18 @@ pip install -r requirements.txt
 
 ## ⚡ Ejecución de la Demodulación
 
-El script principal de integración y diagnóstico es `run_suite.py`. Al ejecutarlo, buscará los archivos WAV configurados en [modules/config.py](./modules/config.py), demodulará las señales y generará un reporte consolidado en la consola junto con gráficos detallados de error temporal y curvas en el directorio `reportes/`.
+El script principal de integración y diagnóstico es `run_suite.py`. Admite como argumento opcional la ruta de la carpeta que contiene los archivos de audio .wav (si no se proporciona, buscará en `./audio`, `./audios` o en el directorio actual). El script realiza de forma automática la estimación de la velocidad de transmisión de cada audio a través de pruebas de demodulación y reporta las métricas de canal correspondientes.
 
-Para correr la demodulación sobre los archivos de prueba del proyecto:
+Para ejecutar el procesamiento, ejecute desde el directorio raíz del repositorio:
 
 ```bash
-python3 run_suite.py
+python3 processing/run_suite.py [ruta_al_directorio_de_audios]
+```
+
+Por ejemplo:
+
+```bash
+python3 processing/run_suite.py audio
 ```
 
 ### Gráficos de Salida (en carpeta `reportes/`):
