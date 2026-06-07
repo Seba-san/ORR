@@ -43,6 +43,8 @@ class ResultadoEspectral:
         self.n_ventanas      = 1      # Ventana de integración de 5s
         self.segmento_inicio = None   # Índice de inicio de la ventana de 5s
         self.segmento_fin    = None   # Índice de fin de la ventana de 5s
+        self.bloque_inicio   = None   # Índice de inicio de la ráfaga
+        self.bloque_fin      = None   # Índice de fin de la ráfaga
 
 
 class AnalizadorEspectral:
@@ -128,7 +130,7 @@ class AnalizadorEspectral:
             print(f"[AnalizadorEspectral] Primera ráfaga útil aislada: {inicio_bloque/self.fs:.2f}s — {fin_bloque/self.fs:.2f}s. "
                   f"Ventana de 5s posicionada de forma definitiva en: {inicio/self.fs:.2f}s — {fin/self.fs:.2f}s")
                   
-        return inicio, fin
+        return inicio, fin, inicio_bloque, fin_bloque
 
     def _localizar_pico(self, freqs: np.ndarray, espectro: np.ndarray,
                         f_centro: float, rango: float) -> tuple:
@@ -191,13 +193,16 @@ class AnalizadorEspectral:
             self._ventana_ponderacion = get_window(self.tipo_ventana, self.n_ventana_5s)
             inicio, fin = 0, len(señal_filtrada)
             segmento = señal_filtrada
+            inicio_bloque, fin_bloque = 0, len(señal_filtrada)
         else:
             # 1. Localizar ventana de 5s centrada en la primera ráfaga
-            inicio, fin = self._localizar_ventana_util(señal_filtrada)
+            inicio, fin, inicio_bloque, fin_bloque = self._localizar_ventana_util(señal_filtrada)
             segmento = señal_filtrada[inicio:fin]
 
         resultado.segmento_inicio = inicio
         resultado.segmento_fin    = fin
+        resultado.bloque_inicio   = inicio_bloque
+        resultado.bloque_fin      = fin_bloque
 
         # 2. Calcular la FFT
         bloque_ponderado = segmento * self._ventana_ponderacion
