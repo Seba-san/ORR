@@ -63,20 +63,26 @@ pip install -r requirements.txt
 
 ---
 
-## ⚡ Ejecución de la Demodulación
+## ⚡ Ejecución de la Demodulación y Segmentación
 
-El script principal de integración y diagnóstico es `run_suite.py`. Admite como argumento opcional la ruta de la carpeta que contiene los archivos de audio .wav (si no se proporciona, buscará en `./audio`, `./audios` o en el directorio actual). El script realiza de forma automática la estimación de la velocidad de transmisión de cada audio a través de pruebas de demodulación y reporta las métricas de canal correspondientes.
+Para procesar de forma correcta los datasets que contienen múltiples transmisiones continuas con silencios y ruido FM intermedio, el flujo recomendado consiste en:
+1. **Segmentar automáticamente** los audios continuos en ráfagas individuales usando `generate_bursts.py`.
+2. **Ejecutar la suite de demodulación** `run_suite.py` sobre los audios resultantes.
 
-Para ejecutar el procesamiento, ejecute desde el directorio raíz del repositorio:
+Para ver una explicación detallada del flujo completo paso a paso, consulte la guía:
+*   [Guía del Flujo de Trabajo Integrado con Ráfagas (workflow_bursts.md)](./workflow_bursts.md)
+*   [Documentación Técnica del Segmentador (README_generate_bursts.md)](./README_generate_bursts.md)
 
+### 1. Segmentar Ráfagas
+Para segmentar automáticamente un directorio de audios continuos y guardarlos en una carpeta de salida:
 ```bash
-python3 processing/run_suite.py [ruta_al_directorio_de_audios]
+python3 processing/generate_bursts.py data/libre/5 -o data_generated/5 --grid
 ```
 
-Por ejemplo:
-
+### 2. Procesar con run_suite.py
+Para ejecutar la suite sobre el directorio de ráfagas generadas, ejecute desde el directorio raíz del repositorio:
 ```bash
-python3 processing/run_suite.py audio
+python3 processing/run_suite.py data_generated/5
 ```
 
 ### Gráficos de Salida (en carpeta `reportes/`):
