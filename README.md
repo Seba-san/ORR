@@ -97,10 +97,11 @@ ORR/
   * MicroPython v1.20 o superior instalado en el microcontrolador.
   * Suite de demodulación: Python 3.10+ con las librerías indicadas en [processing/requirements.txt](./processing/requirements.txt).
 
-Para instrucciones detalladas de implementación de cada módulo, por favor consulta los archivos `README.md` específicos dentro de cada directorio:
+Para instrucciones detalladas de implementación de cada módulo, por favor consulta los archivos `README.md` y guías específicos dentro de cada directorio:
 * Ver [firmware/README.md](./firmware/README.md) para la configuración del microcontrolador.
 * Ver [hardware/README.md](./hardware/README.md) para el circuito de acoplamiento analógico.
 * Ver [processing/README.md](./processing/README.md) para la suite de demodulación espectral y cálculo de BER.
+* Ver [processing/workflow_bursts.md](./processing/workflow_bursts.md) para el flujo de trabajo integrado y segmentación automática de ráfagas.
 * Ver [data/README.md](./data/README.md) para acceder a los metadatos de GPS y descargar el dataset de audio.
 
 ---
