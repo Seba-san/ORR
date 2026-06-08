@@ -120,13 +120,17 @@ def detectar_bloques_activos(x_filtered, fs, threshold_ratio, duracion_minima_s,
 
 
 def segmentar_audio_en_rafagas(fpath, output_dir=None, padding_s=1.0, duracion_minima_s=4.0, 
-                               threshold_ratio=0.20, snr_threshold=10.0, use_grid=False, verbose=True):
+                               threshold_ratio=0.20, snr_threshold=10.0, use_grid=False, 
+                               verbose=False, quiet=False, progreso=""):
     """
     Lee un archivo de audio WAV principal, localiza los bloques de ráfagas activas
     (con opción de optimización de umbral por grilla de búsqueda) y los exporta.
     """
-    if verbose:
-        print(f"\nAnalizando: {os.path.basename(fpath)}")
+    imprimir_progreso = not quiet
+    imprimir_detalles = verbose and not quiet
+
+    if imprimir_progreso:
+        print(f"\n{progreso}Analizando: {os.path.basename(fpath)}")
 
     # 1. Cargar el audio original
     fs, data = wav.read(fpath)
@@ -162,10 +166,10 @@ def segmentar_audio_en_rafagas(fpath, output_dir=None, padding_s=1.0, duracion_m
             
             EXPECTED_BURSTS = {10: 1, 50: 2, 150: 2, 300: 2, 600: 1, 1200: 1}
             n_esperado = EXPECTED_BURSTS.get(baud_rate, 1)
-            if verbose:
+            if imprimir_detalles:
                 print(f"  • Baudrate detectado: {baud_rate} bd | Esperado: {n_esperado} ráfagas.")
         except Exception as e:
-            if verbose:
+            if imprimir_detalles:
                 print(f"  • [Grilla] Error detectando baudrate para {os.path.basename(fpath)}: {e}. Asumiendo 1 ráfaga.")
             n_esperado = 1
 
@@ -199,7 +203,7 @@ def segmentar_audio_en_rafagas(fpath, output_dir=None, padding_s=1.0, duracion_m
 
         final_threshold = mejor_umbral
         bloques_validos = [(b[0], b[1]) for b in mejores_bloques]
-        if verbose:
+        if imprimir_detalles:
             print(f"  • [Grilla] Umbral óptimo seleccionado: {final_threshold:.2f} (detectó {len(bloques_validos)} ráfagas).")
     else:
         # Detección simple con umbral fijo
@@ -207,11 +211,11 @@ def segmentar_audio_en_rafagas(fpath, output_dir=None, padding_s=1.0, duracion_m
         bloques_validos = [(b[0], b[1]) for b in bloques]
 
     if not bloques_validos:
-        if verbose:
+        if imprimir_progreso:
             print(f"  ❌ No se detectaron ráfagas AFSK válidas en el archivo (Umbral: {final_threshold:.2f}).")
         return 0
 
-    if verbose:
+    if imprimir_detalles:
         print(f"  ⚡ Se exportarán {len(bloques_validos)} ráfagas válidas:")
 
     # 4. Extraer y guardar cada ráfaga con padding
@@ -235,8 +239,19 @@ def segmentar_audio_en_rafagas(fpath, output_dir=None, padding_s=1.0, duracion_m
         # Guardar archivo de audio
         wav.write(out_path, fs, burst_samples)
         archivos_generados += 1
+
+        # Si existe un archivo CSV de telemetría asociado al WAV original, copiarlo para la ráfaga
+        csv_original = os.path.splitext(fpath)[0] + ".csv"
+        if os.path.exists(csv_original):
+            import shutil
+            out_csv_path = os.path.join(out_dir, f"{basename}_burst_{i + 1}.csv")
+            try:
+                shutil.copy2(csv_original, out_csv_path)
+            except Exception as e:
+                if imprimir_detalles:
+                    print(f"    ⚠️ No se pudo copiar la telemetría CSV: {e}")
         
-        if verbose:
+        if imprimir_detalles:
             duracion_s = len(burst_samples) / fs
             print(f"    • Ráfaga {i+1}: {ini/fs:.2f}s a {fin/fs:.2f}s (Exportado: {out_filename}, Duración: {duracion_s:.2f}s)")
 
@@ -258,36 +273,41 @@ def main():
                         help="Duración mínima en segundos para considerar un segmento activo (por defecto: 4.0s).")
     parser.add_argument("--grid", action="store_true",
                         help="Activar grilla de búsqueda automática para optimizar el umbral RMS por archivo.")
+    parser.add_argument("-v", "--verbose", action="store_true",
+                        help="Habilitar reportes detallados del proceso de segmentación y grilla.")
     parser.add_argument("-q", "--quiet", action="store_true",
-                        help="Deshabilitar reportes detallados en consola (modo silencioso).")
+                        help="Deshabilitar toda impresión en consola (modo silencioso).")
     args = parser.parse_args()
 
-    verbose = not args.quiet
+    verbose = args.verbose
+    quiet = args.quiet
 
     if os.path.isfile(args.entrada):
         segmentar_audio_en_rafagas(args.entrada, args.output_dir, args.padding, args.min_duration,
-                                   args.threshold, args.snr_threshold, args.grid, verbose)
+                                   args.threshold, args.snr_threshold, args.grid, verbose, quiet, progreso="[1/1] ")
     elif os.path.isdir(args.entrada):
         archivos = sorted(glob.glob(os.path.join(args.entrada, '**', '*.wav'), recursive=True))
         # Excluir archivos que ya están segmentados
         archivos_a_procesar = [f for f in archivos if "_burst_" not in os.path.basename(f)]
         
         if not archivos_a_procesar:
-            if verbose:
+            if not quiet:
                 print(f"No se encontraron archivos WAV principales para procesar en {args.entrada}")
             return
             
-        if verbose:
+        if not quiet:
             print(f"Buscando grabaciones continuas en: {args.entrada}")
             print(f"Encontrados {len(archivos_a_procesar)} archivos principales.")
         
         total_generados = 0
-        for f in archivos_a_procesar:
+        total_archivos = len(archivos_a_procesar)
+        for idx, f in enumerate(archivos_a_procesar, 1):
+            progreso = f"[{idx}/{total_archivos}] "
             num = segmentar_audio_en_rafagas(f, args.output_dir, args.padding, args.min_duration,
-                                             args.threshold, args.snr_threshold, args.grid, verbose)
+                                             args.threshold, args.snr_threshold, args.grid, verbose, quiet, progreso)
             total_generados += num
             
-        if verbose:
+        if not quiet:
             print(f"\n==========================================================================")
             print(f" PROCESO COMPLETADO: {total_generados} ráfagas generadas en total.")
             print(f"==========================================================================")
