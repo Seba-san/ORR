@@ -19,9 +19,11 @@ class SincronizadorDPLL:
     Sincronizador de Símbolo basado en un lazo de fase digital (DPLL) con filtro PI.
     """
 
-    def __init__(self, fs=None, baud_rate=1200):
+    def __init__(self, fs=None, baud_rate=1200, umbral_amplitud=0.15, ventana_guarda=0.25):
         self.fs = fs if fs is not None else config.FS_RX
         self.baud_rate = baud_rate
+        self.umbral_amplitud = umbral_amplitud
+        self.ventana_guarda = ventana_guarda
         
         # Período de símbolo nominal en muestras
         self.N_s = self.fs / self.baud_rate  # 19200 / 1200 = 16.0 muestras
@@ -59,34 +61,48 @@ class SincronizadorDPLL:
         historial_fases = np.zeros(N)
         historial_errores = np.zeros(N)
         
+        # Calcular el límite del squelch basado en el pico de amplitud
+        limite_amplitud = self.umbral_amplitud * np.max(np.abs(baseband_signal))
+        
         # Lazo DPLL a nivel de muestra
         for n in range(1, N):
             fase_prev = fase_nco
             fase_nco += step
             
-            # 1. Detección de Transición (Cruce por cero del baseband)
-            # Ocurre un cruce por cero si la señal cambia de signo entre n-1 y n
+            # 1. Detección de Transición (Cruce por cero)
             cruce = (baseband_signal[n-1] * baseband_signal[n] < 0)
             
             error_fase = 0.0
             if cruce:
-                # El cruce por cero (límite de símbolo) idealmente debería ocurrir
-                # cuando la fase del NCO es exactamente 0.0 (o 1.0 en la envoltura circular).
-                # Calculamos la desviación respecto a la referencia (0.0):
-                if fase_nco > 0.5:
-                    error_fase = fase_nco - 1.0
-                else:
-                    error_fase = fase_nco
+                # Interpolación lineal para estimar el instante exacto del cruce por cero entre n-1 y n
+                v_prev = baseband_signal[n-1]
+                v_curr = baseband_signal[n]
+                frac = -v_prev / (v_curr - v_prev + 1e-12)
+                fase_cruce = fase_prev + frac * step
+                if fase_cruce >= 1.0:
+                    fase_cruce -= 1.0
                     
-                # 2. Filtro de Lazo PI
-                integrador += self.Ki * error_fase
-                # Anti-windup (Saturación del integrador)
-                integrador = np.clip(integrador, -self.limite_integral * step_nominal, self.limite_integral * step_nominal)
-                
-                # Ajuste de la frecuencia del NCO
-                step = step_nominal + self.Kp * error_fase + integrador
-                # Limitar paso para evitar desenganche catastrófico
-                step = np.clip(step, 0.5 * step_nominal, 1.5 * step_nominal)
+                # El cruce por cero idealmente debería ocurrir en fase = 0.0
+                if fase_cruce > 0.5:
+                    error_fase = fase_cruce - 1.0
+                else:
+                    error_fase = fase_cruce
+                    
+                # Filtro por Ventana de Guarda: ignorar si el error es aberrante (ruido)
+                if np.abs(error_fase) > self.ventana_guarda:
+                    error_fase = 0.0
+                else:
+                    # 2. Filtro de Lazo PI con realimentación negativa
+                    integrador -= self.Ki * error_fase
+                    # Anti-windup (Saturación del integrador)
+                    integrador = np.clip(integrador, -self.limite_integral, self.limite_integral)
+                    
+                    # Ajuste de la frecuencia del NCO (realimentación negativa)
+                    step = step_nominal * (1.0 - self.Kp * error_fase + integrador)
+                    # Limitar paso para evitar desenganche catastrófico (±5% de la nominal)
+                    step = np.clip(step, 0.95 * step_nominal, 1.05 * step_nominal)
+
+
                 
             # 3. Instante de muestreo (Strobe en fase = 0.5, centro del símbolo)
             # Ocurre cuando la fase del NCO cruza el umbral medio de 0.5

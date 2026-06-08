@@ -25,12 +25,12 @@ class DetectorBaudios:
 
     def __init__(self):
         self.fs = config.FS_RX
-        self.candidatos = config.BAUD_RATES_CANDIDATOS
+        self.candidatos = config.BAUD_RATES_CANDIDATOS[::-1]
 
         if config.MODO_VERBOSE:
             print(f"[DetectorBaudios] Inicializado. Candidatos: {self.candidatos} baudios")
 
-    def detectar(self, señal_filtrada: np.ndarray, f_mark: float = None, f_space: float = None, segmento_inicio: int = 0) -> float:
+    def detectar(self, señal_filtrada: np.ndarray, f_mark: float = None, f_space: float = None, segmento_inicio: int = 0, segmento_fin: int = None) -> float:
         """
         Analiza la señal filtrada de entrada y estima la velocidad nominal (Baud Rate)
         ejecutando pruebas de demodulación y seleccionando la velocidad con menor
@@ -54,13 +54,23 @@ class DetectorBaudios:
         evaluador = EvaluadorBER()
         nyq = self.fs / 2.0
 
+        duracion_archivo = len(señal_filtrada) / self.fs
+
         for baud in self.candidatos:
+            # Validación de duración física: evitar que velocidades lentas se clasifiquen en archivos cortos
+            expected_bits = config.BITS_POR_VELOCIDAD.get(baud, 127)
+            duracion_transmision = (expected_bits / baud) + 2.0  # Incluyendo ~2s de PTT pre/post delay
+            if duracion_archivo < (duracion_transmision - 3.0):
+                if config.MODO_VERBOSE:
+                    print(f"  • [DetectorBaudios] Omitiendo candidato {baud} bd: duración insuficiente ({duracion_archivo:.2f}s < {duracion_transmision:.2f}s)")
+                continue
+                
             # Filtros de Banda Adaptativos
             half_bw = max(75.0, baud / 2.0)
-            b_m, a_m = signal.butter(2, [max(100.0, f_mark - half_bw)/nyq, min(nyq-100.0, f_mark + half_bw)/nyq], btype='bandpass')
+            b_m, a_m = signal.butter(config.FILTRO_BANDPASS_ORDEN, [max(100.0, f_mark - half_bw)/nyq, min(nyq-100.0, f_mark + half_bw)/nyq], btype='bandpass')
             x_mark = signal.lfilter(b_m, a_m, señal_filtrada)
             
-            b_s, a_s = signal.butter(2, [max(100.0, f_space - half_bw)/nyq, min(nyq-100.0, f_space + half_bw)/nyq], btype='bandpass')
+            b_s, a_s = signal.butter(config.FILTRO_BANDPASS_ORDEN, [max(100.0, f_space - half_bw)/nyq, min(nyq-100.0, f_space + half_bw)/nyq], btype='bandpass')
             x_space = signal.lfilter(b_s, a_s, señal_filtrada)
             
             # Envolventes
@@ -68,8 +78,8 @@ class DetectorBaudios:
             env_space = np.abs(x_space)
             
             # Filtro Pasa-Bajos de Envolvente
-            env_lp_cutoff = min(nyq - 100.0, max(20.0, 2.0 * baud))
-            b_lp, a_lp = signal.butter(2, env_lp_cutoff / nyq, btype='low')
+            env_lp_cutoff = min(nyq - 100.0, max(20.0, config.FILTRO_LOWPASS_ENV_FACTOR * baud))
+            b_lp, a_lp = signal.butter(config.FILTRO_LOWPASS_ENV_ORDEN, env_lp_cutoff / nyq, btype='low')
             env_mark_lp = signal.lfilter(b_lp, a_lp, env_mark)
             env_space_lp = signal.lfilter(b_lp, a_lp, env_space)
             
@@ -108,13 +118,21 @@ class DetectorBaudios:
             best_ber_baud = 1.0
             for candidate_start in rango_busqueda:
                 bits_cand = []
-                for i in range(127):
+                if segmento_fin is not None:
+                    max_bits = max(0, int((segmento_fin - candidate_start) / N_s))
+                    limit_bits = min(127, max_bits)
+                else:
+                    limit_bits = 127
+                for i in range(limit_bits):
                     idx = int(candidate_start + i * N_s + half_N)
                     if idx < len(y_balanceada):
                         bits_cand.append(1 if y_balanceada[idx] > 0 else 0)
                     else:
                         bits_cand.append(0)
-                res_cand = evaluador.calcular_ber(bits_cand)
+                if not bits_cand:
+                    res_cand = {'ber': 1.0}
+                else:
+                    res_cand = evaluador.calcular_ber(bits_cand)
                 if res_cand['ber'] < best_ber_baud:
                     best_ber_baud = res_cand['ber']
                     if best_ber_baud == 0.0:
