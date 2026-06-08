@@ -32,16 +32,16 @@ from baud_detector import DetectorBaudios
 from synchronizer import SincronizadorDPLL
 
 
-def demodular_canal_universal(alias, fpath, baud_rate='auto', generar_graficos=False, verbose=False, use_cache=False):
+def demodular_canal_universal(alias, fpath, baud_rate='auto', generar_graficos=False, verbose=False, use_cache=False, progreso=""):
     """
     Ejecuta el demodulador diferencial síncrono universal sobre un archivo WAV específico,
     adaptando dinámicamente los anchos de banda, filtros pasa-bajos de envolvente y
     periodo de símbolo (muestras por bit) para compensar drift analógico y atenuación de RF.
     """
     if not verbose:
-        print(f"Procesando: {alias}...", end="", flush=True)
+        print(f"{progreso}Procesando: {alias}...", end="", flush=True)
     else:
-        print(f"Procesando: {alias}...", flush=True)
+        print(f"{progreso}Procesando: {alias}...", flush=True)
         print(f"  • Velocidad Configurada: {baud_rate}")
 
     
@@ -395,17 +395,19 @@ def main():
         return
         
     resultados = []
-    for fpath in archivos:
+    total_archivos = len(archivos)
+    for idx, fpath in enumerate(archivos, 1):
         alias = os.path.splitext(os.path.basename(fpath))[0]
+        progreso = f"[{idx}/{total_archivos}] "
         try:
             res = demodular_canal_universal(
                 alias, fpath, baud_rate='auto',
                 generar_graficos=args.generar_graficos, verbose=args.verbose,
-                use_cache=args.use_cache
+                use_cache=args.use_cache, progreso=progreso
             )
             resultados.append(res)
         except Exception as e:
-            print(f"Error procesando {fpath}: {e}")
+            print(f"{progreso}Error procesando {fpath}: {e}")
             
     # Mostrar tabla resumen factual de resultados
     if resultados:
