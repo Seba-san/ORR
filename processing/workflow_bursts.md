@@ -73,18 +73,10 @@ python3 ORR/processing/generate_bursts.py data/libre/5 -o data_generated/5 --gri
 
 *Este comando escaneará `data/libre/5`, excluirá archivos que ya posean la nomenclatura de ráfaga y generará los archivos limpios segmentados (`audio_sdr_*_burst_X.wav`) en la carpeta `data_generated/5`.*
 
-### Paso 3: Vinculación de Metadatos GPS de Telemetría (Opcional)
-Para conservar la trazabilidad de la posición GPS del ensayo y georreferenciar cada ráfaga individual, se debe clonar el archivo `.csv` de telemetría original renombrándolo para que coincida con cada ráfaga generada.
+### Paso 3: Vinculación de Metadatos GPS de Telemetría (Automática)
+Para conservar la trazabilidad de la posición GPS del ensayo y georreferenciar cada ráfaga individual, el segmentador (`generate_bursts.py`) detecta automáticamente si existe un archivo `.csv` de telemetría asociado a la grabación `.wav` principal. 
 
-Puede automatizar este proceso ejecutando este comando rápido en Bash:
-```bash
-for f in data_generated/5/*_burst_*.wav; do
-    # Extraer el nombre base del archivo principal
-    base=$(basename "$f" | sed 's/_burst_.*//')
-    # Copiar el CSV original asignando el nombre de la ráfaga
-    cp "data/libre/5/${base}.csv" "data_generated/5/$(basename "$f" .wav).csv" 2>/dev/null || true
-done
-```
+Si está presente, **copiará y renombrará de forma automática** el archivo de telemetría original (por ejemplo, generando `audio_sdr_..._burst_X.csv` al lado de `audio_sdr_..._burst_X.wav`). **No es necesario ejecutar scripts de terminal adicionales para esta tarea.**
 
 ### Paso 4: Ejecución del Demodulador y Medición de BER
 Una vez generadas las ráfagas individuales en el directorio destino, invoque la suite de demodulación directamente sobre dicha carpeta:
