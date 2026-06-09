@@ -156,7 +156,8 @@ BITS_POR_VELOCIDAD = {
 }
 
 # Candidatos para la grilla de búsqueda de ganancias DPLL (Grid Search)
-DPLL_KP_CANDIDATOS = [0.01, 0.02, 0.05, 0.08, 0.12, 0.18, 0.25]
-DPLL_KI_CANDIDATOS = [0.0001, 0.0005, 0.001, 0.002, 0.004, 0.008]
+# Kp más alto es necesario para rastrear el drift a 1200 bd (T_símbolo = 16 muestras)
+DPLL_KP_CANDIDATOS = [0.01, 0.02, 0.05, 0.08, 0.12, 0.18, 0.25, 0.35, 0.50]
+DPLL_KI_CANDIDATOS = [0.0001, 0.0005, 0.001, 0.002, 0.004, 0.008, 0.015]
 
 
