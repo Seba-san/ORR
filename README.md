@@ -8,7 +8,7 @@ Este repositorio contiene el diseño de *hardware*, el *firmware* embebido y la 
 
 ## 📝 Descripción del Proyecto
 
-El despliegue de plataformas robóticas autónomas en entornos agrícolas reales (como olivares o viñedos) enfrenta atenuación electromagnética en las bandas tradicionales de $2.4\text{ GHz}$ o $5.8\text{ GHz}$ debido a la absorción por la biomasa y el follaje húmedo. Para sortear esta limitación física, el proyecto **ORR** propone una arquitectura de acoplamiento no intrusiva que convierte transceptores analógicos de FM comerciales (como el **Baofeng UV-82**) en radio-módems digitales de datos en la banda de VHF.
+El despliegue de plataformas robóticas autónomas en entornos agrícolas reales (como olivares o viñedos) enfrenta atenuación electromagnética en las bandas tradicionales de $2.4\text{ GHz}$ o $5.8\text{ GHz}$ debido a la absorción por la biomasa y el follaje húmedo. Para sortear esta limitación física, el proyecto **ORR** propone una arquitectura de acoplamiento no intrusiva que convierte transceptores analógicos de FM comerciales (como el **Baofeng UV-82**) en radio-módems digitales de datos en las bandas de VHF/UHF.
 
 <p align="center">
   <img src="./assets/foto_prototipo.png" width="320" alt="Prototipo de radio-módem digital acoplado a transceptor analógico" />
@@ -40,15 +40,18 @@ Mediante el uso de un microcontrolador (**Raspberry Pi Pico 2W**), se implementa
 * *****Streaming*** Asíncrono Multilazo:** Lectura en tiempo real del ADC a 19.2 kHz mediante *buffers* dobles (*ping-pong*) en el *Core* 1 de la Pico 2W, mientras que el *Core* 0 gestiona un servidor TCP *socket* embebido sobre Wi-Fi para transmitir los datos de forma inalámbrica a la base del operador.
 
 ### 4. Demodulador por Envolventes Balanceadas
-* **Demodulación por Envolventes Balanceadas:** Aísla las componentes de frecuencia de $1200\text{ Hz}$ (*Mark*) y $2400\text{ Hz}$ (*Space*) mediante filtros de banda Butterworth de segundo orden adaptados a la velocidad de transmisión, extrayendo sus envolventes de amplitud y restándolas mediante un factor de compensación de ganancia dinámica.
-* **Sincronización por Búsqueda de Fase:** Implementa un algoritmo de búsqueda en rejilla (*Grid Search*) que localiza el instante de muestreo de la ráfaga de datos minimizando la tasa de error de bit, manteniendo el espaciamiento de símbolos constante para compensar derivas de fase.
+* **Pipeline Bifurcado por Velocidad:** El pipeline de demodulación se adapta al régimen de baudios detectado.
+  - **1200 bd:** Usa filtros `filtfilt` de **fase nula** (*zero-phase*) en las etapas de pasa-banda y pasa-bajos de envolvente, eliminando el retardo de grupo de ~8.8 muestras que causaba ISI sistemático con el método causal clásico. La señal resultante se normaliza geométricamente al rango $[-1, +1]$ usando el punto medio entre percentil 5 y 95 del burst activo, y se aplica un squelch de inicio para evitar el falso enganche del reloj (*false lock*) sobre silencios previos a la ráfaga.
+  - **≤ 600 bd:** Usa filtros causales clásicos (`lfilter`), donde el retardo de grupo es despreciable en proporción al período de símbolo.
+* **Demodulación por Envolventes Balanceadas:** En ambos casos, las envolventes de amplitud de Mark y Space se compensan con un factor de ganancia dinámica $g$ calculado sobre los percentiles de amplitud del segmento activo: $y = env_{\text{mark}} - g \cdot env_{\text{space}}$.
+* **Sincronización DPLL con Grilla Configurable:** La búsqueda de la fase de ráfaga se realiza en una ventana de $1 \times N_s$ muestras (hasta $15 \times N_s$ para 1200 bd), seguida de la sintonización automática del DPLL por grilla sobre los candidatos $K_p$ y $K_i$ definidos en `modules/config.py`. El período de símbolo $N_s = f_s / \text{baud}$ se calcula siempre dinámicamente, sin valores fijos por velocidad.
 * **Métrica de Confianza ($C_k$):** Cálculo analítico de la diferencia relativa entre las envolventes balanceadas de Mark y Space en cada instante de muestreo, lo que permite evaluar la calidad del bit recuperado directamente en la etapa de decisión.
 
 ---
 
 ## 📈 Resultados Experimentales de Campo
 
-Los ensayos de campo se realizaron en un olivar de producción intensiva en San Juan, Argentina, inyectando tramas balanceadas PRBS-7 de 127 bits de longitud repetidas de forma continua. Se operó a una potencia de $1.0\text{ W}$ en la frecuencia VHF de $139.970\text{ MHz}$.
+Los ensayos de campo se realizaron en un olivar de producción intensiva en San Juan, Argentina, inyectando tramas balanceadas PRBS-7 de 127 bits de longitud repetidas de forma continua. Se operó a una potencia de $1.0\text{ W}$ en la frecuencia UHF de $433\text{ MHz}$ con polarización horizontal.
 
 ![Entorno del ensayo en olivar de producción intensiva](./assets/entorno_campo.jpg)
 
@@ -60,10 +63,19 @@ A continuación se resumen los resultados obtenidos a diferentes distancias y ve
 | :---: | :---: | :---: | :---: | :--- |
 | **1 m**<br>*(Laboratorio)* | 10 a 1200 bd | 0.00% a 0.51% | 0.998 a 0.795 | Canal ideal, relación señal-ruido elevada. |
 | **240 m**<br>*(Borde del Predio)* | 300 bd<br>1200 bd | 1.88%<br>7.45% | 0.731<br>0.375 | Línea de vista parcial. Atenuación de agudos perceptible a alta velocidad. |
-| **580 m**<br>*(Bajo Follaje)* | 300 bd<br>1200 bd | 2.17%<br>8.14% | 0.626<br>0.378 | Obstrucción moderada por biomasa. Difracción efectiva en VHF. |
+| **580 m**<br>*(Bajo Follaje)* | 300 bd<br>1200 bd | 2.17%<br>8.14% | 0.626<br>0.378 | Obstrucción moderada por biomasa. Difracción y atenuación en UHF. |
 | **1500 m**<br>*(Largo Alcance)* | **300 bd**<br>1200 bd | **2.39%**<br>44.53% | **0.714**<br>0.350 | **Obstrucción por árboles adultos sin línea de vista. Configuración con tasa de error mínima a 300 bd.** |
 
 ![Curvas experimentales de tasa de errores de bit (BER) vs velocidad y distancia](./assets/curva_ber.png)
+
+---
+
+## 💾 Dataset Experimental y Bases de Datos
+
+Las campañas de medición en campo y laboratorio produjeron un conjunto de datos (*dataset*) de señales de audio digitalizadas y telemetría de geolocalización. Debido al volumen y al tamaño de los archivos de audio crudos (`.wav`), el dataset completo está almacenado en un repositorio compartido externo.
+
+* 🔗 **Acceso al Dataset Completo (Google Drive):** [Bases de Datos de Audio ORR](https://drive.google.com/drive/folders/1wKw8cH1Ox6S6E19gmR8-GltFr6CDUwmw?usp=sharing)
+* 📖 **Descripción Detallada:** Para una explicación completa sobre la secuencia pseudoaleatoria PRBS-7, el hardware de adquisición Web-DAQ (Core 1 para ADC y Core 0 para Wi-Fi/streaming), las velocidades ensayadas, el significado de los nombres de los archivos y la distribución de las carpetas, consulte la [Guía Detallada del Dataset](./data/README.md).
 
 ---
 
@@ -97,10 +109,11 @@ ORR/
   * MicroPython v1.20 o superior instalado en el microcontrolador.
   * Suite de demodulación: Python 3.10+ con las librerías indicadas en [processing/requirements.txt](./processing/requirements.txt).
 
-Para instrucciones detalladas de implementación de cada módulo, por favor consulta los archivos `README.md` específicos dentro de cada directorio:
+Para instrucciones detalladas de implementación de cada módulo, por favor consulta los archivos `README.md` y guías específicos dentro de cada directorio:
 * Ver [firmware/README.md](./firmware/README.md) para la configuración del microcontrolador.
 * Ver [hardware/README.md](./hardware/README.md) para el circuito de acoplamiento analógico.
 * Ver [processing/README.md](./processing/README.md) para la suite de demodulación espectral y cálculo de BER.
+* Ver [processing/workflow_bursts.md](./processing/workflow_bursts.md) para el flujo de trabajo integrado y segmentación automática de ráfagas.
 * Ver [data/README.md](./data/README.md) para acceder a los metadatos de GPS y descargar el dataset de audio.
 
 ---

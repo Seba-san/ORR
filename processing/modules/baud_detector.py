@@ -95,11 +95,8 @@ class DetectorBaudios:
             
             y_balanceada = env_mark_lp - g * env_space_lp
             
-            # Para 1200 baudios, usamos la corrección de drift nominal
-            if baud == 1200:
-                N_s = 16.0236
-            else:
-                N_s = float(self.fs / baud)
+            # Período de símbolo en muestras (dinámico, sin hardcodes)
+            N_s = float(self.fs / baud)
                 
             half_N = int(N_s // 2)
             
