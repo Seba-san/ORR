@@ -6,7 +6,7 @@ Esta carpeta contiene la suite de herramientas desarrolladas en **Python** para 
 
 ## 🚀 Flujo del Procesamiento Digital de Señales (DSP)
 
-El software realiza el procesamiento en seis etapas secuenciales de bajo nivel:
+El software realiza el procesamiento en seis etapas secuenciales de bajo nivel. A partir del paso 3, el pipeline se **bifurca** según la velocidad de símbolo detectada para compensar las características específicas de cada régimen de baudios:
 
 ```
                   +-----------------------------------+
@@ -23,19 +23,40 @@ El software realiza el procesamiento en seis etapas secuenciales de bajo nivel:
                   |  Analizador Fourier (Autotuning)  |
                   +-----------------------------------+
                                     │
-                                    ▼
-                  +-----------------------------------+
-                  |   Filtros de Banda Adaptativos    |
-                  +-----------------------------------+
+                   ┌────────────────┴─────────────────┐
+                   │ baud = 1200                      │ baud ≤ 600
+                   ▼                                  ▼
+        +--------------------+             +--------------------+
+        |  Filtros Pasa-Banda|             |  Filtros Pasa-Banda|
+        |  Butterworth       |             |  Butterworth       |
+        |  (filtfilt,        |             |  (lfilter,         |
+        |   ZERO-PHASE)      |             |   causal)          |
+        +--------------------+             +--------------------+
+                   │                                  │
+                   ▼                                  ▼
+        +--------------------+             +--------------------+
+        | Envolventes +      |             | Envolventes +      |
+        | LP Zero-Phase      |             | LP Causal          |
+        +--------------------+             +--------------------+
+                   │                                  │
+                   ▼                                  │
+        +--------------------+                       │
+        | Normalización      |                       │
+        | Geométrica Absoluta|                       │
+        | (centro p5-p95)    |                       │
+        +--------------------+                       │
+                   │                                  │
+                   ▼                                  │
+        +--------------------+                       │
+        | Squelch de Inicio  |                       │
+        | (primer pulso >0.5)|                       │
+        +--------------------+                       │
+                   └────────────────┬─────────────────┘
                                     │
                                     ▼
                   +-----------------------------------+
-                  | Detección y Balance de Envolvente |
-                  +-----------------------------------+
-                                    │
-                                    ▼
-                  +-----------------------------------+
-                  | Búsqueda de Fase y Decisión de Bit|
+                  | Búsqueda de Fase (Grid Search)    |
+                  | + DPLL (Kp/Ki desde config.py)    |
                   +-----------------------------------+
                                     │
                                     ▼
@@ -46,9 +67,13 @@ El software realiza el procesamiento en seis etapas secuenciales de bajo nivel:
 
 1.  **Acondicionamiento (Filtro FIR Kaiser):** Un filtro de respuesta al impulso finita (FIR) de fase lineal de orden 127 aísla la banda útil (300 Hz a 3000 Hz), eliminando ruidos fuera de banda tales como zumbidos de red de 50/60 Hz.
 2.  **Autocalibración Espectral (Transformada Rápida de Fourier):** Ejecuta una transformada rápida de Fourier para detectar las frecuencias reales del transmisor (Mark y Space), compensando corrimientos locales debidos a derivas térmicas de los osciladores.
-3.  **Filtros de Banda Adaptativos:** Aplica filtros pasa-banda Butterworth de segundo orden con ancho de banda adaptado al *baudrate* de transmisión para separar las componentes de Mark y Space minimizando la interferencia intersimbólica (ISI).
-4.  **Detección y Balance de Envolvente:** Estima las envolventes de amplitud mediante el valor absoluto de las señales de salida filtradas y un filtro pasa-bajos Butterworth de segundo orden. A partir de los percentiles de amplitud en el segmento activo, calcula y aplica un factor de ganancia de balance $g$ para restar la atenuación de alta frecuencia en la línea: $y_{\text{balanceada}} = env_{\text{mark}} - g \cdot env_{\text{space}}$.
-5.  **Búsqueda de Fase y Decisión de Bit:** Realiza una búsqueda en rejilla (*Grid Search*) de la fase temporal inicial de la ráfaga de datos para alinear el instante de muestreo del primer bit minimizando la tasa de error de bit (BER), evaluando luego la secuencia a intervalos constantes.
+3.  **Filtros de Banda Adaptativos (bifurcado):**
+    - **1200 bd:** Usa `signal.filtfilt()` (fase nula, retardo de grupo cero) tanto en los filtros pasa-banda como en el filtro pasa-bajos de envolvente. Esto elimina el retardo de grupo de ~8.8 muestras que causaba ISI sistemático a 1200 bd con el método causal.
+    - **≤ 600 bd:** Usa `signal.lfilter()` causal clásico, que funciona correctamente a estas velocidades donde el retardo de grupo es despreciable en proporción al período de símbolo.
+4.  **Detección y Balance de Envolvente:** Estima las envolventes de amplitud y aplica un factor de ganancia $g$ para compensar la atenuación diferencial de frecuencia: $y_{\text{cruda}} = env_{\text{mark}} - g \cdot env_{\text{space}}$. Para 1200 bd, se aplica adicionalmente:
+    - **Normalización Geométrica Absoluta:** La señal se normaliza al rango $[-1, +1]$ usando el punto medio exacto entre el percentil 5 y 95 del burst ($y = (y_{\text{cruda}} - c) / a$, con $c$ el centro y $a$ la semiplitud), robusta frente a tramas asimétricas.
+    - **Squelch de Inicio:** Se detecta el primer pulso real ($|y| > 0.5$) y se reposiciona `bloque_inicio` exactamente un símbolo antes de él, evitando el falso enganche del reloj (*false lock*) sobre el silencio inicial.
+5.  **Búsqueda de Fase y Sintonización DPLL:** Realiza una búsqueda en rejilla (*Grid Search*) de la fase temporal inicial. Para 1200 bd, la ventana de búsqueda se amplía a $15 \times N_s$ muestras para compensar el retardo residual de la cadena de filtros. A continuación, el DPLL se sintoniza también por grilla sobre los candidatos de $K_p$ y $K_i$ definidos en `config.DPLL_KP_CANDIDATOS` y `config.DPLL_KI_CANDIDATOS`. El período de símbolo $N_s = f_s / \text{baud}$ se calcula siempre dinámicamente, sin valores hardcodeados por velocidad.
 6.  **Evaluación de BER:** Alinea la secuencia demodulada mediante correlación cruzada contra el patrón local PRBS-7 de 127 bits de Golomb ($y(n) = y(n-6) \oplus y(n-7)$) y calcula la Tasa de Error de Bit (BER) sobre la ráfaga completa.
 
 ---
