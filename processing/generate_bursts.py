@@ -29,53 +29,74 @@ except ImportError:
     FS_NOMINAL = 19200
 
 
-def es_rafaga_afsk_valida(segmento_float, fs, f_mark=1200, f_space=2400, snr_threshold=10.0):
+def es_bloque_afsk_valido(x_filtered, ini, fin, fs, f_mark=1200, f_space=2400, snr_threshold=5.0, padding_s=1.0):
     """
-    Verifica espectralmente si un segmento de audio contiene tonos AFSK reales
-    (Mark a 1200 Hz y Space a 2400 Hz) con suficiente relación señal-ruido.
-    Retorna una tupla (es_valida, snr_estimada).
+    Verifica si un segmento detectado [ini, fin] en x_filtered es un burst AFSK
+    legítimo comparándolo contra el patrón de referencia del sistema (duración,
+    portadora silenciosa y predominancia espectral de tonos).
+    Retorna una tupla (es_valido, snr_estimada).
     """
-    n = len(segmento_float)
-    # Tomar hasta 1.0 segundo del centro del segmento
-    n_seg = min(n, int(1.0 * fs))
-    if n_seg < int(0.5 * fs):  # Al menos 0.5s para análisis
+    # 1. Validación de Duración (debe coincidir con las ráfagas del protocolo)
+    duracion = (fin - ini) / fs
+    duraciones_esperadas = [10.58, 12.7, 21.17, 25.4]
+    tolerancia = 2.0
+    duracion_valida = any(abs(duracion - d) <= tolerancia for d in duraciones_esperadas)
+    if not duracion_valida:
         return False, 0.0
-        
-    start_idx = (n - n_seg) // 2
-    segmento = segmento_float[start_idx : start_idx + n_seg]
-    
-    # Calcular espectro de amplitud (FFT) con ventana Hann
+
+    # 2. Validación de Secuencia de Portadora Silenciosa (RMS ratio)
+    padding_samples = int(padding_s * fs)
+    rms_act = np.sqrt(np.mean(x_filtered[ini:fin] ** 2) + 1e-12)
+
+    # Verificación del pre-padding (1.0s de portadora silenciada al inicio)
+    pre_start = max(0, ini - padding_samples)
+    if ini - pre_start > int(0.5 * padding_samples):
+        rms_pre = np.sqrt(np.mean(x_filtered[pre_start:ini] ** 2) + 1e-12)
+        if rms_act / rms_pre < 2.5:
+            return False, 0.0
+
+    # Verificación del post-padding (1.0s de portadora silenciada al final)
+    post_end = min(len(x_filtered), fin + padding_samples)
+    if post_end - fin > int(0.5 * padding_samples):
+        rms_post = np.sqrt(np.mean(x_filtered[fin:post_end] ** 2) + 1e-12)
+        if rms_act / rms_post < 2.5:
+            return False, 0.0
+
+    # 3. Validación Espectral (Predominancia de Tonos AFSK - Peak SNR)
+    # Tomamos 1.0 segundo del centro del segmento
+    n_seg = min(fin - ini, int(1.0 * fs))
+    if n_seg < int(0.5 * fs):
+        return False, 0.0
+    start_idx = ini + (fin - ini - n_seg) // 2
+    segmento = x_filtered[start_idx : start_idx + n_seg]
+
     window = np.hanning(n_seg)
     X = np.fft.rfft(segmento * window)
     mag = np.abs(X)
     freqs = np.fft.rfftfreq(n_seg, 1.0 / fs)
-    
-    # Buscar energía en los tonos (Mark +- 120 Hz y Space +- 120 Hz)
+
+    # Buscar energía en la vecindad de Mark (1200 Hz) y Space (2400 Hz)
     mask_mark = (freqs >= f_mark - 120) & (freqs <= f_mark + 120)
     mask_space = (freqs >= f_space - 120) & (freqs <= f_space + 120)
-    
     if not np.any(mask_mark) or not np.any(mask_space):
         return False, 0.0
-        
-    # Pico de amplitud en las bandas de Mark y Space
+
     peak_mark = np.max(mag[mask_mark])
     peak_space = np.max(mag[mask_space])
     energia_tonos = peak_mark + peak_space
-    
-    # Ruido de referencia: promedio en la banda de audio (300 a 3000 Hz) excluyendo los tonos
+
+    # Pico de ruido máximo fuera de las bandas de Mark/Space
     mask_ruido = (freqs >= 300) & (freqs <= 3000) & (~mask_mark) & (~mask_space)
     if not np.any(mask_ruido):
         return False, 0.0
-        
-    promedio_ruido = np.mean(mag[mask_ruido])
-    
-    # Relación de amplitud tono/ruido
-    snr_estimada = energia_tonos / (promedio_ruido + 1e-12)
-    
+    peak_noise = np.max(mag[mask_ruido])
+
+    # Relación de amplitud picos de tonos vs pico de ruido
+    snr_estimada = energia_tonos / (peak_noise + 1e-12)
     return (snr_estimada > snr_threshold), snr_estimada
 
 
-def detectar_bloques_activos(x_filtered, fs, threshold_ratio, duracion_minima_s, snr_threshold):
+def detectar_bloques_activos(x_filtered, fs, threshold_ratio, duracion_minima_s, snr_threshold, padding_s=1.0):
     """
     Detecta los bloques activos en la señal filtrada usando un umbral de energía.
     Retorna una lista de tuplas (inicio, fin, promedio_snr) de los bloques válidos.
@@ -105,16 +126,12 @@ def detectar_bloques_activos(x_filtered, fs, threshold_ratio, duracion_minima_s,
     elif len(fines) > len(inicios):
         fines = fines[:len(inicios)]
 
-    # Filtrar bloques por duración mínima y validación espectral
-    duracion_minima_samples = int(duracion_minima_s * fs)
+    # Filtrar bloques por duración mínima y validación espectral/secuencia
     bloques_validos = []
-    
     for ini, fin in zip(inicios, fines):
-        if (fin - ini) >= duracion_minima_samples:
-            segmento = x_filtered[ini:fin]
-            valida, snr = es_rafaga_afsk_valida(segmento, fs, snr_threshold=snr_threshold)
-            if valida:
-                bloques_validos.append((ini, fin, snr))
+        valido, snr = es_bloque_afsk_valido(x_filtered, ini, fin, fs, snr_threshold=snr_threshold, padding_s=padding_s)
+        if valido:
+            bloques_validos.append((ini, fin, snr))
                 
     return bloques_validos
 
