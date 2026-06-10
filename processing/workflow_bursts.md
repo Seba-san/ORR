@@ -45,7 +45,18 @@ El flujo de procesamiento digital completo se compone de las siguientes etapas:
  └──────────────────────────────────────────────────────┘
              │
              ▼
-   [ Reportes BER (%) / Confianza Ck / Perfiles Temporales ]
+    [ Salida de texto: BER (%) / Confianza Ck por archivo ]
+             │
+             ▼
+ ┌──────────────────────────────────────────────────────┐
+ │ 3. Consolidación de Resultados (generate_csv.py)    │
+ │    • Lectura de GPS desde _burst_*.csv               │
+ │    • Agrupamiento por sesión (distancia haversine)   │
+ │    • BER acumulado por sesión × baudrate              │
+ └──────────────────────────────────────────────────────┘
+             │
+             ▼
+    [ CSV: Distancia_m × Baudrate → BER (%) ]
 ```
 
 ---
@@ -87,6 +98,16 @@ python3 ORR/processing/run_suite.py data_generated/5
 
 La suite detectará las ráfagas y procesará la secuencia completa de bits transmitidos según la velocidad de cada archivo para generar los reportes de BER y los gráficos de error temporal en la carpeta `reportes/`.
 
+### Paso 5: Generación del CSV de Resultados
+
+Una vez obtenida la salida de `run_suite.py` en `salida.txt`, ejecute `generate_csv.py` para clasificar los resultados por distancia GPS y baudrate:
+
+```bash
+python3 ORR/processing/generate_csv.py -i salida.txt -d data_generated/<dataset>/ -o resultado.csv
+```
+
+El script leerá las coordenadas GPS de los `_burst_*.csv`, agrupará automáticamente las ráfagas en sesiones por distancia y producirá el CSV de resultados. Puede especificarse un umbral manual de sesión con `-t <metros>` si la detección automática no es adecuada para el dataset.
+
 ---
 
 ## 🎛️ Parámetros de Ingesta Clave en el Segmentador
@@ -103,4 +124,4 @@ El script `generate_bursts.py` expone parámetros configurables por línea de co
 
 Al procesar un nuevo dataset o integrar el segmentador en el pipeline:
 1. **Validación Visual:** Inspeccione los gráficos generados en `reportes/` para corroborar que el enganche de fase (DPLL) y el balance de envolventes se realicen correctamente desde el inicio de la ráfaga.
-2. **Consistencia de BER:** Compare las tasas de error de bit obtenidas contra las mediciones de referencia previas (almacenadas en `libre.csv`). Variaciones abruptas en el BER de ráfagas generadas automáticamente pueden indicar un umbral de detección RMS demasiado bajo (que unió ráfagas con silencios) o un padding insuficiente.
+2. **Consistencia de BER:** Verifique que las sesiones detectadas por `generate_csv.py` coincidan con las distancias nominales del ensayo. Si el número de sesiones detectadas no es el esperado, ajuste el umbral con `-t`.
