@@ -77,3 +77,33 @@ python3 ORR/processing/run_suite.py data_filtered/5
 ```
 
 Este procedimiento garantiza que la suite de demodulación se ejecute sobre los archivos correctos sin duplicar datos y procesando todas las ráfagas individuales disponibles.
+
+---
+
+## 📊 4. Generación del CSV de Resultados (`generate_csv.py`)
+
+Para consolidar los resultados obtenidos por la suite de demodulación, se utiliza el script [generate_csv.py](file:///home/seba/Dropbox/1_UNSJ/1_proyectos_investigacion/intercomunicador/antigravity/arreglando_orr/ORR/processing/generate_csv.py). Este script automatiza la correlación de los archivos de audio procesados con sus correspondientes datos de telemetría GPS para calcular las distancias reales y calcular el BER acumulado por sesión.
+
+### Flujo de Ejecución de 3 Etapas
+
+El pipeline de procesamiento completo se ejecuta de forma independiente y auditable en las siguientes etapas:
+
+1. **Segmentación (`generate_bursts.py`):**
+   ```bash
+   python3 ORR/processing/generate_bursts.py data/libre/ -o data_generated/libre/ --grid
+   ```
+2. **Demodulación (`run_suite.py`):**
+   ```bash
+   python3 ORR/processing/run_suite.py data_generated/libre/ > salida_libre.txt
+   ```
+3. **Consolidación (`generate_csv.py`):**
+   ```bash
+   python3 ORR/processing/generate_csv.py -i salida_libre.txt -d data_generated/libre/ -o resultado_libre.csv
+   ```
+
+### Parámetros de `generate_csv.py`
+
+- `-i`, `--input`: Ruta al archivo de texto con la salida de `run_suite.py` (obligatorio).
+- `-d`, `--dir`: Ruta al directorio que contiene las ráfagas generadas con sus metadatos GPS en formato `.csv` (obligatorio).
+- `-o`, `--output`: Ruta de salida para el archivo `.csv` estructurado (obligatorio).
+- `-t`, `--threshold`: Umbral en metros para segmentar sesiones (opcional). Si se omite, se calcula automáticamente usando la media más dos desviaciones estándar de los saltos de distancia.
