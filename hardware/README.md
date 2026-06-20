@@ -29,31 +29,10 @@ Para evitar falsos contactos y ruidos analógicos inducidos por soldaduras defic
 
 El circuito transmisor acondiciona la señal digital de audio generada por PWM del microcontrolador y gobierna el pulsador *Push-To-Talk* (PTT) de la radio mediante aislamiento óptico.
 
-### Diagrama Esquemático (ASCII)
+### Diagrama Esquemático
 
-```
-                            Divisor Resistivo               Acople AC
-                            (Atenuador tipo L)              Capacitor
-                             
-  [GP17 / Pin 22] ----------[ 10 kOhms (R1) ]-------+---------[ 47 uF (C1) ]---------> [Amarillo 2.5mm]
-  (PWM Audio Out)                                   |             +                 (+Mic Radio)
-                                             [ 1 kOhms (R2) ]
-                                                    |
-                                                  [GND]
-                                                  
-  [GP16 / Pin 21] -----[ 470 Ohms (R3) ]----+                  +------[ 1 kOhms ]---- [Rojo 3.5mm]
-                                            |                  |                     (PTT2 Radio)
-                                        (Pin 1)            (Pin 4)
-                                        +-------+        +-------+
-                                        | \ | / |  OPTO  | | / | |
-                                        |  \ /  | PC817  |  /|   |
-                                        |   V   |        |   v   |
-                                        +-------+        +-------+
-                                        (Pin 2)            (Pin 3)
-                                            |                  |
-  [GND / Pin 23] ---------------------------+                  +--------------------- [Blanco 2.5mm]
-                                                                                     (GND/PTT Base)
-```
+![Esquema de acondicionamiento de transmisión (TX) y aislamiento galvánico de la línea PTT](esquematico_tx.png)
+
 
 ### Explicación del Diseño y Cálculos
 1. **Atenuación Resistiva (Divisor L):** La señal PWM sintetizada por el pin `GP17` oscila en un rango digital de 0 a 3.3 V pico a pico. Para no saturar el amplificador de entrada de micrófono de la radio (diseñado para niveles de voz de ~10-30 mV), el divisor resistivo ($R_1 = 10\text{ k}\Omega$, $R_2 = 1\text{ k}\Omega$) atenúa la señal en un factor de:
@@ -70,22 +49,10 @@ El circuito transmisor acondiciona la señal digital de audio generada por PWM d
 
 El circuito adaptador del receptor reduce los altos niveles de tensión del altavoz analógico de la radio y los centra en el rango dinámico unipolar (0 a 3.3 V) de la entrada analógica `GP26 (ADC0)` del microcontrolador.
 
-### Diagrama Esquemático (ASCII)
+### Diagrama Esquemático
 
-```
-                  Divisor Resistivo             Acople AC        Red de **Offset** con *Bypass*
-                  (Atenuador tipo L)           Capacitor          Divisor + *Bypass* C
-                  
- [Rojo 3.5mm] ------[ 22 kOhms (R4) ]-------+---------[ 47 uF (C2) ]--------+--------- [ GP26 / ADC0 Pin 31 ]
- (Audio Speaker)                            |             +                 |
-                                     [ 12 kOhms (R5) ]               [ 10 kOhms (R6) ] a 3.3V (Pin 36)
-                                           |                                |
-                                         [AGND]                             +-------+
-                                                                            |       |
-                                                                     [ 10 kOhms (R7) ] [ 100 nF (C3) ] (*Bypass*)
-                                                                            |       |
-                                                                          [AGND]  [AGND]
-```
+![Esquema del Front-End Analógico de Recepción](esquematico_rx.png)
+
 
 ### Explicación del Diseño y Cálculos
 1. **Atenuador de Entrada (R4, R5):** El volumen máximo de salida del altavoz de la radio puede superar los 5 V pico a pico, lo que dañaría la entrada del ADC. El divisor compuesto por $R_4 = 22\text{ k}\Omega$ y $R_5 = 12\text{ k}\Omega$ atenúa la señal analógica multiplicándola por un factor de $0.35$ ($\approx 1.76\text{ V}_{\text{p-p}}$ máximo), garantizando un margen seguro.
