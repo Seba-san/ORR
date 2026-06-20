@@ -49,24 +49,57 @@ Mediante el uso de un microcontrolador (**Raspberry Pi Pico 2W**), se implementa
 
 ---
 
-## 📈 Resultados Experimentales de Campo
+## 📈 Ensayos y Resultados Experimentales
 
-Los ensayos de campo se realizaron en un olivar de producción intensiva en San Juan, Argentina, inyectando tramas balanceadas PRBS-7 de 127 bits de longitud repetidas de forma continua. Se operó a una potencia de $1.0\text{ W}$ en la frecuencia UHF de $433\text{ MHz}$ con polarización horizontal.
+Para validar el desempeño del módem AFSK y el enlace de radiofrecuencia en condiciones de operación reales, se diseñó y ejecutó una campaña experimental dividida en **dos entornos de ensayo diferenciados** (2 experimentos independientes):
 
-![Entorno del ensayo en olivar de producción intensiva](./assets/entorno_campo.jpg)
+1. **Espacio Abierto (Libre):** Ensayo en línea de vista rural libre de obstáculos y follaje. Sirve como canal de calibración y referencia para evaluar el desempeño básico y el límite térmico/frecuencial del enlace.
+2. **Bajo Follaje de Olivos (Campo):** Ensayo realizado en una plantación densa de olivos en la provincia de San Juan, Argentina. El enlace se caracterizó por la total obstrucción de la línea de vista directa debido a la biomasa frutal, con las radios posicionadas a menos de 1 metro del suelo y las antenas polarizadas horizontalmente para evitar la absorción de los troncos verticales.
 
-![Mapa de puntos de ensayo y geolocalización de las mediciones](./assets/mapa_ensayo.png)
+Ambos experimentos operaron a una potencia de **1.0 W** (Low Power) en la banda UHF a **433 MHz**.
 
-A continuación se resumen los resultados obtenidos a diferentes distancias y velocidades:
+### 1. Entornos de Ensayo
 
-| Distancia | Baudrate (Velocidad) | BER (% de Error) | Confianza Promedio ($C_k$) | Comentarios de Canal |
-| :---: | :---: | :---: | :---: | :--- |
-| **1 m**<br>*(Laboratorio)* | 10 a 1200 bd | 0.00% a 0.51% | 0.998 a 0.795 | Canal ideal, relación señal-ruido elevada. |
-| **240 m**<br>*(Borde del Predio)* | 300 bd<br>1200 bd | 1.88%<br>7.45% | 0.731<br>0.375 | Línea de vista parcial. Atenuación de agudos perceptible a alta velocidad. |
-| **580 m**<br>*(Bajo Follaje)* | 300 bd<br>1200 bd | 2.17%<br>8.14% | 0.626<br>0.378 | Obstrucción moderada por biomasa. Difracción y atenuación en UHF. |
-| **1500 m**<br>*(Largo Alcance)* | **300 bd**<br>1200 bd | **2.39%**<br>44.53% | **0.714**<br>0.350 | **Obstrucción por árboles adultos sin línea de vista. Configuración con tasa de error mínima a 300 bd.** |
+La siguiente ilustración muestra las condiciones físicas de ambos escenarios de medición:
 
-![Curvas experimentales de tasa de errores de bit (BER) vs velocidad y distancia](./assets/curva_ber.png)
+<p align="center">
+  <img src="./assets/entorno_libre.jpeg" width="380" alt="Entorno del ensayo en espacio abierto (Libre)" />
+  <img src="./assets/entorno_campo.jpg" width="380" alt="Entorno del ensayo bajo follaje de olivos (Campo)" />
+</p>
+
+### 2. Georreferenciación de Mediciones (Figura 5 del Paper)
+
+Los puntos específicos de medición, capturados y georreferenciados mediante el Web-DAQ en el teléfono celular del operador, se ubican a distancias nominales de **5 m, 500 m, 1000 m y 1500 m** en la plantación:
+
+<p align="center">
+  <img src="./assets/mapa_ensayo.png" width="650" alt="Mapa de puntos de ensayo y geolocalización de las mediciones" />
+</p>
+
+### 3. Tasa de Error de Bit (BER)
+
+A continuación se consolidan los resultados de la Tasa de Error de Bit (BER %) obtenidos en cada entorno para las diferentes distancias reales y regímenes de velocidad (baudrate) analizados:
+
+#### Experimento 1: Espacio Abierto (Libre)
+| Distancia Real (Nominal) | 10 bd | 50 bd | 150 bd | 300 bd | 600 bd | 1200 bd |
+| :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| **0 m** (5 m) | 0.00% | 0.00% | 0.36% | 0.03% | 0.06% | 5.39% |
+| **552 m** (500 m) | 0.00% | 0.08% | 0.05% | 0.04% | 0.06% | 5.80% |
+| **985 m** (1000 m) | 0.00% | 0.08% | 0.02% | 0.04% | 0.13% | 11.20% |
+| **1382 m** (1500 m) | 0.00% | 0.04% | 0.06% | 0.02% | 0.06% | 5.80% |
+
+#### Experimento 2: Bajo Follaje de Olivos (Campo)
+| Distancia Real (Nominal) | 10 bd | 50 bd | 150 bd | 300 bd | 600 bd | 1200 bd |
+| :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| **0 m** (5 m) | 0.00% | 4.69% | 0.08% | 0.03% | 0.05% | 5.49% |
+| **549 m** (500 m) | 0.00% | 0.04% | 0.05% | 0.04% | 0.51% | 5.40% |
+| **1071 m** (1000 m) | 0.00% | 0.00% | 0.03% | 0.05% | 0.06% | 5.46% |
+| **1484 m** (1500 m) | 0.00% | 0.04% | 0.03% | 0.02% | 0.03% | 6.33% |
+
+El comportamiento y la comparación visual del BER de ambos entornos se detalla en las curvas experimentales (subplots) obtenidas:
+
+<p align="center">
+  <img src="./assets/curva_ber.png" width="800" alt="Curvas experimentales de tasa de errores de bit (BER) vs velocidad y distancia" />
+</p>
 
 ---
 
@@ -90,6 +123,7 @@ ORR/
 ├── firmware/            # Código fuente para Raspberry Pi Pico 2W (MicroPython)
 │   ├── tx/              # Firmware del nodo transmisor (DDS, PWM, FSM, PRBS-7)
 │   └── rx/              # Firmware del nodo receptor (adquisición en Core 1, servidor TCP en Core 0)
+├── fotos/               # Fotografías de los entornos experimentales (libre y campo)
 ├── hardware/            # Esquemáticos y manual de acondicionamiento de la interfaz analógica
 │   └── esquematicos/    # Circuitos y pinout de interconexión
 ├── mechanics/           # Gabinete protector e interfaz de acople mecánico 3D (STL/STEP)
