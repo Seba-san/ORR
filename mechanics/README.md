@@ -35,3 +35,14 @@ Este directorio contiene las piezas del diseño final de la carcasa, listas para
 *   **[lengueta.stl](./lengueta.stl)**: Pestillo o lengüeta de traba para fijar el ensamble al seguro de la radio.
 *   **[base_v4.FCStd](./base_v4.FCStd)**: Archivo de diseño paramétrico original creado en **FreeCAD** (herramienta de CAD de código abierto). Contiene todo el historial de modelado para realizar modificaciones, redimensionados o adaptaciones futuras.
 
+---
+
+## 📷 Previsualización del Ensamble y Piezas
+
+A continuación se muestran capturas de pantalla de los modelos mecánicos exportados directamente desde **FreeCAD** para facilitar la comprensión de las piezas y el ensamble final con la radio:
+
+| Ensamble Completo con Radio | Ensamble de Piezas de Carcasa |
+| :---: | :---: |
+| <img src="./imagenes_stl/completo_con_radio.png" width="350" alt="Ensamble Completo con Radio Baofeng" /> | <img src="./imagenes_stl/completo.png" width="350" alt="Ensamble de la Carcasa Cerrada" /> |
+| **Placa Base y Lengüeta de Traba** | |
+| <img src="./imagenes_stl/placa_base_lenguata.png" width="350" alt="Placa Base y Lengüeta" /> | |
