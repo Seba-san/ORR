@@ -160,7 +160,7 @@ Si utiliza este trabajo en su investigación o desarrollo, por favor cite el art
 
 ```bibtex
 @inproceedings{sansoni2026orr,
-  author    = {Sansoni, Sebastian},
+  author    = {Sansoni, Sebastian and Gaspoz, Gastón Leandro and Báez Sánchez, Dennys and Ortiz Pupo, Alida},
   title     = {Diseño y Análisis de un sistema de Comunicación Digital sobre Radios Analógicas para Robótica en exteriores},
   booktitle = {Actas de las Jornadas Argentinas de Robótica (JAR)},
   year      = {2026},
