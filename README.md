@@ -156,7 +156,9 @@ Para instrucciones detalladas de implementación de cada módulo, por favor cons
 
 Este desarrollo forma parte de la línea de investigación en redes tolerantes a retardos (DTN) aplicadas a la robótica agrícola del **INAUT (UNSJ)**.
 
-Si utiliza este trabajo en su investigación o desarrollo, por favor cite el artículo científico asociado:
+Si utiliza este trabajo en su investigación o desarrollo, por favor cite el artículo científico asociado a presentarse en las **Jornadas Argentinas de Robótica (JAR 2026)**:
+
+* 📄 **Documento completo (PDF):** [ORR_sansoni.pdf](./ORR_sansoni.pdf)
 
 ```bibtex
 @inproceedings{sansoni2026orr,
