@@ -11,7 +11,7 @@ Este repositorio contiene el diseño de *hardware*, el *firmware* embebido y la 
 El despliegue de plataformas robóticas autónomas en entornos agrícolas reales (como olivares o viñedos) enfrenta atenuación electromagnética en las bandas tradicionales de $2.4\text{ GHz}$ o $5.8\text{ GHz}$ debido a la absorción por la biomasa y el follaje húmedo. Para sortear esta limitación física, el proyecto **ORR** propone una arquitectura de acoplamiento no intrusiva que convierte transceptores analógicos de FM comerciales (como el **Baofeng UV-82**) en radio-módems digitales de datos en las bandas de VHF/UHF.
 
 <p align="center">
-  <img src="./assets/foto_prototipo.png" width="320" alt="Prototipo de radio-módem digital acoplado a transceptor analógico" />
+<img width="320"  alt="Image" src="https://github.com/user-attachments/assets/66bbb243-8c60-4d64-998f-1498990c4307" />
 </p>
 
 Mediante el uso de un microcontrolador (**Raspberry Pi Pico 2W**), se implementa un módem AFSK (*Audio Frequency Shift Keying*) a velocidades de hasta 1200 baudios. El sistema se comporta como un bloque físico autónomo que reduce los costos de equipamiento en más de dos órdenes de magnitud respecto a transceptores tácticos industriales.
@@ -64,7 +64,7 @@ La siguiente ilustración muestra las condiciones físicas de ambos escenarios d
 
 <p align="center">
   <img src="./assets/entorno_libre.jpeg" width="380" alt="Entorno del ensayo en espacio abierto (Libre)" />
-  <img src="./assets/entorno_campo.jpg" width="380" alt="Entorno del ensayo bajo follaje de olivos (Campo)" />
+  <img width="380"  alt="Entorno del ensayo bajo follaje de olivos (Campo)"  src="https://github.com/user-attachments/assets/65118b4b-1160-4da6-ba90-3dcd2f6a2935" />
 </p>
 
 ### 2. Georreferenciación de Mediciones (Figura 5 del Paper)
@@ -72,7 +72,7 @@ La siguiente ilustración muestra las condiciones físicas de ambos escenarios d
 Los puntos específicos de medición, capturados y georreferenciados mediante el Web-DAQ en el teléfono celular del operador, se ubican a distancias nominales de **5 m, 500 m, 1000 m y 1500 m** en la plantación:
 
 <p align="center">
-  <img src="./assets/mapa_ensayo.png" width="650" alt="Mapa de puntos de ensayo y geolocalización de las mediciones" />
+  <img width="650"  alt="Mapa de puntos de ensayo y geolocalización de las mediciones" src="https://github.com/user-attachments/assets/e7a9d56f-9df4-45d1-b7bf-2f71b100d50c" />
 </p>
 
 ### 3. Tasa de Error de Bit (BER)
