@@ -44,7 +44,7 @@ Mediante el uso de un microcontrolador (**Raspberry Pi Pico 2W**), se implementa
   - **1200 bd:** Usa filtros `filtfilt` de **fase nula** (*zero-phase*) en las etapas de pasa-banda y pasa-bajos de envolvente, eliminando el retardo de grupo de ~8.8 muestras que causaba ISI sistemático con el método causal clásico. La señal resultante se normaliza geométricamente al rango $[-1, +1]$ usando el punto medio entre percentil 5 y 95 del burst activo, y se aplica un squelch de inicio para evitar el falso enganche del reloj (*false lock*) sobre silencios previos a la ráfaga.
   - **≤ 600 bd:** Usa filtros causales clásicos (`lfilter`), donde el retardo de grupo es despreciable en proporción al período de símbolo.
 * **Demodulación por Envolventes Balanceadas:** En ambos casos, las envolventes de amplitud de Mark y Space se compensan con un factor de ganancia dinámica $g$ calculado sobre los percentiles de amplitud del segmento activo: $y = env_{\text{mark}} - g \cdot env_{\text{space}}$.
-* **Sincronización DPLL con Grilla Configurable:** La búsqueda de la fase de ráfaga se realiza en una ventana de $1 \times N_s$ muestras (hasta $15 \times N_s$ para 1200 bd), seguida de la sintonización automática del DPLL por grilla sobre los candidatos $K_p$ y $K_i$ definidos en `modules/config.py`. El período de símbolo $N_s = f_s / \text{baud}$ se calcula siempre dinámicamente, sin valores fijos por velocidad.
+* **Sincronización DPLL con Grilla Configurable:** La búsqueda de la fase de ráfaga se realiza en una ventana de $1 \times N_s$ muestras (hasta $15 \times N_s$ para 1200 bd), seguida de la sintonización automática del DPLL por grilla sobre los candidatos $K_p$ y $K_i$ definidos en `processing/modules/config.py`. El período de símbolo $N_s = f_s / \text{baud}$ se calcula siempre dinámicamente, sin valores fijos por velocidad.
 * **Métrica de Confianza ($C_k$):** Cálculo analítico de la diferencia relativa entre las envolventes balanceadas de Mark y Space en cada instante de muestreo, lo que permite evaluar la calidad del bit recuperado directamente en la etapa de decisión.
 
 ---
@@ -119,14 +119,13 @@ El repositorio se organiza de la siguiente manera:
 ```
 ORR/
 ├── assets/              # Imágenes y recursos visuales para la documentación
-├── data/                # Dataset experimental (archivos CSV con metadatos GPS e instruciones de audio)
+├── data/                # Dataset experimental (archivos CSV con metadatos GPS e instrucciones de audio)
 ├── firmware/            # Código fuente para Raspberry Pi Pico 2W (MicroPython)
 │   ├── tx/              # Firmware del nodo transmisor (DDS, PWM, FSM, PRBS-7)
 │   └── rx/              # Firmware del nodo receptor (adquisición en Core 1, servidor TCP en Core 0)
 ├── fotos/               # Fotografías de los entornos experimentales (libre y campo)
-├── hardware/            # Esquemáticos y manual de acondicionamiento de la interfaz analógica
-│   └── esquematicos/    # Circuitos y pinout de interconexión
-├── mechanics/           # Gabinete protector e interfaz de acople mecánico 3D (STL/STEP)
+├── hardware/            # Esquemáticos (TX/RX) y manual de acondicionamiento de la interfaz analógica
+├── mechanics/           # Gabinete protector e interfaz de acople mecánico 3D (STL/FreeCAD .FCStd)
 └── processing/          # Suite de demodulación *offline* en Python (Envolventes, Búsqueda de Fase, BER) y MATLAB
 ```
 
