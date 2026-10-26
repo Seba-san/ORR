@@ -100,6 +100,9 @@ Para ver la guía detallada de los pasos 1 y 2, consulte:
 *   [Guía del Flujo de Trabajo Integrado con Ráfagas (workflow_bursts.md)](./workflow_bursts.md)
 *   [Documentación Técnica del Segmentador (README_generate_bursts.md)](./README_generate_bursts.md)
 
+> [!NOTE]
+> **Prerrequisito de Datos:** Los archivos de audio `.wav` continuos no se alojan en el repositorio de Git por su peso. Antes de ejecutar la segmentación, descargue las carpetas correspondientes desde la [carpeta compartida de Google Drive](../data/README.md) y colóquelas dentro de `data/` (ej. `data/campo/` o `data/libre/`).
+
 ### 1. Segmentar Ráfagas
 Para segmentar automáticamente un directorio de audios continuos y guardarlos en una carpeta de salida:
 ```bash

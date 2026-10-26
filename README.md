@@ -141,6 +141,8 @@ ORR/
 * **Software:**
   * MicroPython v1.20 o superior instalado en el microcontrolador.
   * Suite de demodulación: Python 3.10+ con las librerías indicadas en [processing/requirements.txt](./processing/requirements.txt).
+* **Dataset de Audio (Prerrequisito para Procesamiento):**
+  * Descargar previamente las grabaciones de audio `.wav` desde la carpeta compartida de [Google Drive](https://drive.google.com/drive/folders/1wKw8cH1Ox6S6E19gmR8-GltFr6CDUwmw?usp=sharing) y colocarlas en su respectivo directorio dentro de `data/` (por ejemplo, `data/campo/` o `data/libre/`) antes de ejecutar las herramientas de segmentación y demodulación (ver [data/README.md](./data/README.md)).
 
 Para instrucciones detalladas de implementación de cada módulo, por favor consulta los archivos `README.md` y guías específicos dentro de cada directorio:
 * Ver [firmware/README.md](./firmware/README.md) para la configuración del microcontrolador.
