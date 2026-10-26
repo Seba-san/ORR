@@ -159,6 +159,7 @@ Este desarrollo forma parte de la línea de investigación en redes tolerantes a
 Si utiliza este trabajo en su investigación o desarrollo, por favor cite el artículo científico asociado a presentarse en las **Jornadas Argentinas de Robótica (JAR 2026)**:
 
 * 📄 **Documento completo (PDF):** [ORR_sansoni.pdf](./ORR_sansoni.pdf)
+* 📽️ **Diapositivas de la Charla (Slides):** [Presentación en Google Slides (JAR 2026)](https://docs.google.com/presentation/d/1d-XccAFMnecue35wFrUTCQ0sPtqFs1VzQCqnlYXtkr4/edit?usp=sharing)
 
 ```bibtex
 @inproceedings{sansoni2026orr,
